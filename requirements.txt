@@ -1,0 +1,116 @@
+# ==============================================================================
+# LÉONIE - Requirements Python
+# ==============================================================================
+# Installation: pip install -r requirements.txt
+# ==============================================================================
+
+# FastAPI & Web Server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# Pydantic & Settings
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+email-validator>=2.1.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Database
+supabase>=2.3.0
+postgrest>=0.13.0
+
+# Redis & Queue
+redis>=5.0.0
+rq>=1.16.0
+rq-scheduler>=0.13.0
+
+# AI & ML
+mistralai>=0.1.0
+
+# Google APIs
+google-api-python-client>=2.116.0
+google-auth>=2.27.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# Email
+# Note: imaplib et smtplib sont inclus dans la bibliothèque standard Python
+email-reply-parser>=0.5.12
+
+# Document Processing
+python-docx>=1.1.0
+pypdf>=4.0.0
+Pillow>=10.2.0
+pdf2image>=1.17.0
+pillow-heif>=0.15.0  # Support HEIC images
+
+# Image Processing (optionnel pour OCR futur)
+pytesseract>=0.3.10
+
+# HTTP & Requests
+httpx>=0.27.0
+requests>=2.31.0
+
+# Utilities
+python-dateutil>=2.8.2
+pytz>=2024.1
+
+# Hashing & Crypto
+cryptography>=42.0.0
+
+# Logging
+python-json-logger>=2.0.7
+structlog>=24.1.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+httpx>=0.27.0  # Pour TestClient FastAPI
+
+# Type Checking (dev)
+mypy>=1.8.0
+types-requests>=2.31.0
+types-python-dateutil>=2.8.19
+
+# Code Quality (dev)
+black>=24.1.0
+isort>=5.13.0
+flake8>=7.0.0
+pylint>=3.0.0
+
+# ==============================================================================
+# NOTES D'INSTALLATION
+# ==============================================================================
+#
+# 1. Créer un environnement virtuel:
+#    python -m venv venv
+#    source venv/bin/activate  # Linux/macOS
+#    venv\Scripts\activate     # Windows
+#
+# 2. Installer les dépendances:
+#    pip install -r requirements.txt
+#
+# 3. Dépendances système pour le traitement de documents (REQUIS):
+#
+#    LibreOffice (conversion Office en PDF):
+#    macOS: brew install --cask libreoffice
+#    Ubuntu/Debian: sudo apt-get install libreoffice
+#
+#    Ghostscript (compression PDF):
+#    macOS: brew install ghostscript
+#    Ubuntu/Debian: sudo apt-get install ghostscript
+#
+#    Poppler (pdf2image):
+#    macOS: brew install poppler
+#    Ubuntu/Debian: sudo apt-get install poppler-utils
+#    Windows: télécharger depuis https://github.com/oschwartz10612/poppler-windows
+#
+# 4. Pour pytesseract (OCR optionnel):
+#    macOS: brew install tesseract
+#    Ubuntu/Debian: sudo apt-get install tesseract-ocr tesseract-ocr-fra
+#    Windows: télécharger depuis https://github.com/UB-Mannheim/tesseract/wiki
+#
+# ==============================================================================
