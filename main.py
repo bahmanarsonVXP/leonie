@@ -7,6 +7,7 @@ Point d'entrée de l'application FastAPI.
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict
 
 import structlog
@@ -114,36 +115,59 @@ async def health_check() -> Dict[str, Any]:
     """
     # TODO: Vérifier les connexions (Supabase, Redis, etc.)
     
-    # Vérifier LibreOffice
-    libreoffice_status = "unknown"
-    libreoffice_version = None
-    try:
-        import subprocess
-        import shutil
-        
-        # Chercher LibreOffice
-        libreoffice_cmd = None
-        for cmd in ["libreoffice", "/usr/bin/libreoffice", "soffice"]:
-            if shutil.which(cmd):
-                libreoffice_cmd = cmd
-                break
-        
-        if libreoffice_cmd:
-            result = subprocess.run(
-                [libreoffice_cmd, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if result.returncode == 0:
-                libreoffice_status = "ok"
-                libreoffice_version = result.stdout.strip()
+    # Vérifier les dépendances système
+    import subprocess
+    import shutil
+    
+    def check_command(cmd_name: str, version_args: list, possible_paths: list = None) -> tuple[str, str]:
+        """Vérifie si une commande est disponible et retourne son statut et version."""
+        try:
+            cmd = None
+            if possible_paths:
+                for path in possible_paths:
+                    if shutil.which(path) or Path(path).exists():
+                        cmd = path
+                        break
             else:
-                libreoffice_status = "error"
-        else:
-            libreoffice_status = "not_found"
-    except Exception as e:
-        libreoffice_status = f"error: {str(e)}"
+                cmd = shutil.which(cmd_name)
+            
+            if cmd:
+                result = subprocess.run(
+                    [cmd] + version_args,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    version = result.stdout.strip() or result.stderr.strip() or "installed"
+                    return "ok", version
+                else:
+                    return "error", None
+            else:
+                return "not_found", None
+        except Exception as e:
+            return f"error: {str(e)}", None
+    
+    # Vérifier LibreOffice
+    libreoffice_status, libreoffice_version = check_command(
+        "libreoffice",
+        ["--version"],
+        ["libreoffice", "/usr/bin/libreoffice", "soffice"]
+    )
+    
+    # Vérifier Ghostscript
+    ghostscript_status, ghostscript_version = check_command(
+        "gs",
+        ["--version"],
+        ["gs", "/usr/bin/gs"]
+    )
+    
+    # Vérifier Poppler (pdfinfo)
+    poppler_status, poppler_version = check_command(
+        "pdfinfo",
+        ["-v"],
+        ["pdfinfo", "/usr/bin/pdfinfo"]
+    )
 
     return {
         "status": "healthy",
@@ -155,6 +179,10 @@ async def health_check() -> Dict[str, Any]:
             "redis": "ok",     # TODO: Vérifier Redis
             "libreoffice": libreoffice_status,
             "libreoffice_version": libreoffice_version,
+            "ghostscript": ghostscript_status,
+            "ghostscript_version": ghostscript_version,
+            "poppler": poppler_status,
+            "poppler_version": poppler_version,
         }
     }
 
