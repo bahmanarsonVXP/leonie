@@ -57,5 +57,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
 
 # Commande de démarrage
 # Railway définit PORT automatiquement, on utilise 8000 par défaut
-# Utiliser sh -c pour garantir l'expansion de la variable PORT
-CMD sh -c "uvicorn main:app --host 0.0.0.0 --port \${PORT:-8000}"
+# Utiliser un script Python pour lire PORT depuis l'environnement
+CMD python -c "import os; import subprocess; port = os.getenv('PORT', '8000'); subprocess.run(['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', port])"
