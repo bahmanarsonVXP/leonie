@@ -57,4 +57,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
 
 # Commande de démarrage
 # Railway définit PORT automatiquement, on utilise 8000 par défaut
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Utiliser sh -c pour garantir l'expansion de la variable PORT
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port \${PORT:-8000}"
