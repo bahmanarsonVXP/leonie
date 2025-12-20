@@ -113,6 +113,37 @@ async def health_check() -> Dict[str, Any]:
         Dict avec le statut de santé de l'application.
     """
     # TODO: Vérifier les connexions (Supabase, Redis, etc.)
+    
+    # Vérifier LibreOffice
+    libreoffice_status = "unknown"
+    libreoffice_version = None
+    try:
+        import subprocess
+        import shutil
+        
+        # Chercher LibreOffice
+        libreoffice_cmd = None
+        for cmd in ["libreoffice", "/usr/bin/libreoffice", "soffice"]:
+            if shutil.which(cmd):
+                libreoffice_cmd = cmd
+                break
+        
+        if libreoffice_cmd:
+            result = subprocess.run(
+                [libreoffice_cmd, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                libreoffice_status = "ok"
+                libreoffice_version = result.stdout.strip()
+            else:
+                libreoffice_status = "error"
+        else:
+            libreoffice_status = "not_found"
+    except Exception as e:
+        libreoffice_status = f"error: {str(e)}"
 
     return {
         "status": "healthy",
@@ -122,6 +153,8 @@ async def health_check() -> Dict[str, Any]:
         "checks": {
             "database": "ok",  # TODO: Vérifier Supabase
             "redis": "ok",     # TODO: Vérifier Redis
+            "libreoffice": libreoffice_status,
+            "libreoffice_version": libreoffice_version,
         }
     }
 
