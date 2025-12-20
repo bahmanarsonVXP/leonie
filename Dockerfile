@@ -50,8 +50,10 @@ USER leonie
 EXPOSE 8000
 
 # Healthcheck pour Railway
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+# Note: Railway gère le healthcheck automatiquement via railway.json
+# Ce healthcheck Docker est un fallback
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD python -c "import os, requests; port = os.getenv('PORT', '8000'); requests.get(f'http://localhost:{port}/health', timeout=5)"
 
 # Commande de démarrage
 # Railway définit PORT automatiquement, on utilise 8000 par défaut

@@ -72,7 +72,7 @@ MISTRAL_API_KEY=votre-clé-mistral
 
 # Environnement
 ENVIRONMENT=production
-PORT=${{PORT}}  # Railway le définit automatiquement
+# Note: PORT est défini automatiquement par Railway, ne pas l'ajouter manuellement
 ```
 
 #### Variables optionnelles
