@@ -1,0 +1,20 @@
+# ==============================================================================
+# Procfile pour Railway
+# ==============================================================================
+# Définit les processus à lancer sur Railway
+# ==============================================================================
+# IMPORTANT: Seul le service "web" est actif pour l'instant.
+# Le worker sera activé plus tard quand Redis sera configuré.
+# ==============================================================================
+
+# Processus web (FastAPI) - SERVICE ACTIF
+# Railway injecte automatiquement PORT dans l'environnement
+web: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+
+# Processus worker (Redis Queue) - DÉSACTIVÉ POUR L'INSTANT
+# ⚠️ NE PAS DÉCOMMENTER tant que Redis n'est pas configuré sur Railway
+# Pour activer plus tard:
+# 1. Ajouter Redis comme service sur Railway
+# 2. Configurer REDIS_URL dans les variables d'environnement
+# 3. Décommenter la ligne ci-dessous
+# worker: rq worker high default --with-scheduler
