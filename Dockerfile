@@ -40,8 +40,10 @@ COPY --chown=leonie:leonie requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Copier le code de l'application
+# Copier le code de l'application et le script de démarrage
 COPY --chown=leonie:leonie . .
+COPY --chown=leonie:leonie start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Passer à l'utilisateur non-root
 USER leonie
@@ -57,5 +59,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
 
 # Commande de démarrage
 # Railway définit PORT automatiquement, on utilise 8000 par défaut
-# Utiliser un script Python pour lire PORT depuis l'environnement
-CMD python -c "import os; import subprocess; port = os.getenv('PORT', '8000'); subprocess.run(['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', port])"
+# Utiliser le script start.sh qui gère correctement PORT
+CMD ["/app/start.sh"]
