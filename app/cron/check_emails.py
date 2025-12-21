@@ -12,6 +12,7 @@ from typing import List
 from app.models.email import EmailData
 from app.services.email_fetcher import EmailFetcher
 from app.services.email_parser import EmailParser
+from app.services.router import EmailRouter
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +135,9 @@ async def check_new_emails() -> dict:
                     logger.info(f"📝 Résumé: {classification.resume}")
                     logger.info(f"📋 Détails: {classification.details}")
 
-                    # TODO Session 4+: Routing vers workflow approprié
-                    # from app.services.router import EmailRouter
-                    # result = await EmailRouter.route(email, classification, courtier)
-                    # logger.info(f"✅ Traitement: {result}")
+                    # Routing vers workflow approprié (Session 6)
+                    result = await EmailRouter.route(email, classification, courtier)
+                    logger.info(f"✅ Traitement: {result}")
 
                 else:
                     logger.warning(

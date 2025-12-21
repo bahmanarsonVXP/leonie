@@ -5,11 +5,12 @@ Ce module définit les schémas de données pour le traitement
 des emails reçus via IMAP.
 """
 
+import base64
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_serializer
 
 
 class EmailAttachment(BaseModel):
@@ -19,6 +20,18 @@ class EmailAttachment(BaseModel):
     content_type: str = Field(..., description="Type MIME du fichier")
     size_bytes: int = Field(..., ge=0, description="Taille en octets")
     content: Optional[bytes] = Field(None, description="Contenu binaire du fichier")
+
+    @field_serializer('content', when_used='json')
+    def serialize_content(self, content: Optional[bytes]) -> Optional[str]:
+        """
+        Sérialise le contenu binaire en base64 pour JSON.
+
+        Nécessaire pour envoyer les pièces jointes via Redis/RQ qui
+        nécessite une sérialisation JSON.
+        """
+        if content is None:
+            return None
+        return base64.b64encode(content).decode('ascii')
 
     model_config = {
         "json_schema_extra": {

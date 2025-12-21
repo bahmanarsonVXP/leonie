@@ -9,6 +9,7 @@ import logging
 from typing import Dict
 
 from app.models.email import EmailAction, EmailClassification, EmailData
+from app.utils.redis_client import get_queue
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +88,8 @@ class EmailRouter:
         """
         Workflow : Création d'un nouveau dossier client.
 
-        Étapes prévues (Session 4+):
-        1. Extraire infos client depuis classification.details
-        2. Créer le client dans Supabase (table clients)
-        3. Créer le dossier Google Drive
-        4. Initialiser la liste des pièces attendues selon type_pret
-        5. Logger l'activité
-        6. Envoyer email de confirmation au courtier
+        Enqueue un job RQ prioritaire pour créer le dossier client,
+        la structure Drive, et initialiser la liste des pièces attendues.
 
         Args:
             email: Email contenant la demande
@@ -101,23 +97,32 @@ class EmailRouter:
             courtier: Courtier propriétaire du dossier
 
         Returns:
-            Dict avec status et détails de création
-
-        TODO:
-            Session 4: Implémenter création dossier + Drive
+            Dict avec status "enqueued" et job_id
         """
+        queue = get_queue("high")  # Priorité haute pour nouveaux dossiers
+
+        job = queue.enqueue(
+            'app.workers.jobs.process_nouveau_dossier',
+            courtier_id=courtier.get("id"),
+            email_data=email.model_dump(mode='json'),
+            classification=classification.model_dump(mode='json'),
+            job_timeout=300  # 5 minutes max
+        )
+
         logger.info(
-            "TODO: Créer nouveau dossier",
+            "Job nouveau dossier enqueued",
             extra={
-                "details": classification.details,
-                "courtier_id": courtier.get("id")
+                "job_id": job.id,
+                "courtier_id": courtier.get("id"),
+                "client_nom": classification.details.get("client_nom")
             }
         )
 
         return {
-            "status": "todo",
+            "status": "enqueued",
             "action": "nouveau_dossier",
-            "message": "Création de nouveau dossier non implémentée (TODO Session 4)"
+            "job_id": job.id,
+            "message": "Job de création de dossier enqueued"
         }
 
     @staticmethod
@@ -129,17 +134,8 @@ class EmailRouter:
         """
         Workflow : Traitement de documents envoyés pour un dossier existant.
 
-        Étapes prévues (Session 5+):
-        1. Identifier le client (via email ou mention dans le corps)
-        2. Pour chaque pièce jointe:
-            a. Extraire le texte (OCR si image, PDF text extraction)
-            b. Classifier avec Mistral (type de pièce)
-            c. Vérifier duplicata (hash)
-            d. Uploader sur Google Drive
-            e. Enregistrer dans pieces_dossier
-        3. Mettre à jour progression du dossier
-        4. Logger l'activité
-        5. Si dossier complet → notification courtier
+        Enqueue un job RQ pour traiter les pièces jointes, les classifier,
+        les convertir en PDF, les compresser, et les uploader sur Drive.
 
         Args:
             email: Email avec pièces jointes
@@ -147,26 +143,34 @@ class EmailRouter:
             courtier: Courtier propriétaire
 
         Returns:
-            Dict avec status et statistiques de traitement
-
-        TODO:
-            Session 5: Implémenter traitement documents + OCR + Mistral classification
+            Dict avec status "enqueued" et job_id
         """
+        queue = get_queue("default")  # Priorité normale
         nb_attachments = len(email.attachments)
 
+        job = queue.enqueue(
+            'app.workers.jobs.process_envoi_documents',
+            courtier_id=courtier.get("id"),
+            email_data=email.model_dump(mode='json'),
+            classification=classification.model_dump(mode='json'),
+            job_timeout=600  # 10 minutes max
+        )
+
         logger.info(
-            "TODO: Traiter documents",
+            "Job envoi documents enqueued",
             extra={
-                "nb_attachments": nb_attachments,
-                "types_detectes": classification.details.get("types_detectes", [])
+                "job_id": job.id,
+                "courtier_id": courtier.get("id"),
+                "nb_attachments": nb_attachments
             }
         )
 
         return {
-            "status": "todo",
+            "status": "enqueued",
             "action": "envoi_documents",
+            "job_id": job.id,
             "nb_pieces": nb_attachments,
-            "message": f"Traitement de {nb_attachments} documents non implémenté (TODO Session 5)"
+            "message": f"Job de traitement de {nb_attachments} documents enqueued"
         }
 
     @staticmethod
@@ -178,12 +182,8 @@ class EmailRouter:
         """
         Workflow : Modification de la liste des pièces attendues pour un dossier.
 
-        Étapes prévues (Session 6+):
-        1. Identifier le client via classification.details
-        2. Récupérer les pièces à ajouter/retirer
-        3. Mettre à jour la checklist du dossier
-        4. Logger l'activité
-        5. Confirmation au courtier
+        Enqueue un job RQ pour modifier dynamiquement la checklist d'un dossier
+        (ajouter ou retirer des pièces attendues).
 
         Use case:
             Courtier envoie "Pour le dossier Martin, ajouter aussi : attestation employeur et RIB"
@@ -194,23 +194,32 @@ class EmailRouter:
             courtier: Courtier demandeur
 
         Returns:
-            Dict avec status et modifications effectuées
-
-        TODO:
-            Session 6: Implémenter modification dynamique de checklist
+            Dict avec status "enqueued" et job_id
         """
+        queue = get_queue("default")  # Priorité normale
+
+        job = queue.enqueue(
+            'app.workers.jobs.process_modifier_liste',
+            courtier_id=courtier.get("id"),
+            email_data=email.model_dump(mode='json'),
+            classification=classification.model_dump(mode='json'),
+            job_timeout=120  # 2 minutes max
+        )
+
         logger.info(
-            "TODO: Modifier liste pièces",
+            "Job modifier liste enqueued",
             extra={
-                "details": classification.details,
+                "job_id": job.id,
+                "courtier_id": courtier.get("id"),
                 "client_nom": classification.details.get("client_nom")
             }
         )
 
         return {
-            "status": "todo",
+            "status": "enqueued",
             "action": "modifier_liste",
-            "message": "Modification de liste non implémentée (TODO Session 6)"
+            "job_id": job.id,
+            "message": "Job de modification de liste enqueued"
         }
 
     @staticmethod

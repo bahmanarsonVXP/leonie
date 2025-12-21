@@ -63,6 +63,7 @@ credentials.json
 token.json
 service-account.json
 *-credentials.json
+leoniedrive-de502592846e.json
 
 # Railway
 .railway/

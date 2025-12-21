@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS courtiers (
 );
 
 COMMENT ON TABLE courtiers IS 'Courtiers en prêts immobiliers et professionnels';
-COMMENT ON COLUMN courtiers.dossier_drive_id IS 'ID du dossier racine Google Drive du courtier';
+COMMENT ON COLUMN courtiers.dossier_drive_id IS 'ID du dossier racine Google Drive du courtier. DOIT être valide : ce dossier est créé automatiquement lors de la création du courtier et ne doit jamais être invalide';
 COMMENT ON COLUMN courtiers.actif IS 'Indique si le courtier peut encore utiliser le système';
 
 -- ============================================================================

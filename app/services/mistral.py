@@ -431,3 +431,43 @@ Normalise les noms de pièces (ex: "CNI" → "Carte nationale d'identité")."""
             confiance=0.3,  # Faible confiance
             details=details
         )
+
+    # ==========================================================================
+    # MÉTHODES SYNCHRONES POUR RQ (Redis Queue)
+    # ==========================================================================
+    # RQ ne supporte pas nativement async, donc on wrappe avec asyncio.run()
+
+    def classify_email_sync(
+        self,
+        email: EmailData,
+        courtier: Dict,
+        client_exists: bool = False
+    ) -> EmailClassification:
+        """
+        Version synchrone de classify_email pour les workers RQ.
+
+        Utilise asyncio.run() pour exécuter la version async.
+
+        Args:
+            email: Email parsé
+            courtier: Courtier identifié
+            client_exists: Si le client existe déjà
+
+        Returns:
+            EmailClassification
+        """
+        return asyncio.run(self.classify_email(email, courtier, client_exists))
+
+    def extract_pieces_from_text_sync(self, text: str) -> List[Dict]:
+        """
+        Version synchrone de extract_pieces_from_text pour les workers RQ.
+
+        Utilise asyncio.run() pour exécuter la version async.
+
+        Args:
+            text: Texte contenant la liste de pièces
+
+        Returns:
+            Liste de dicts avec structure pièce
+        """
+        return asyncio.run(self.extract_pieces_from_text(text))
