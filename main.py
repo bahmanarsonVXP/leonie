@@ -207,6 +207,7 @@ async def api_info() -> Dict[str, Any]:
             "test_imap": "/test-imap",
             "test_mistral": "/test-mistral",
             "test_document": "/test-document",
+            "test_drive": "/test-drive",
             "check_emails": "/cron/check-emails",
         }
     }
@@ -487,6 +488,182 @@ async def test_document_processing(
             "status": "error",
             "error": str(e),
             "filename": file.filename
+        }
+
+
+@app.post("/test-drive", tags=["Testing"])
+async def test_drive_operations() -> Dict[str, Any]:
+    """
+    Endpoint de test pour Google Drive.
+
+    Teste la création de dossiers et l'upload de fichiers sur Drive.
+
+    Returns:
+        Dict avec les résultats des opérations Drive:
+        - connection: Status de connexion
+        - folder_creation: Test création dossier
+        - file_upload: Test upload fichier
+        - shareable_link: Lien de partage généré
+
+    Example:
+        curl -X POST "http://localhost:8000/test-drive"
+
+    Note:
+        Nécessite GOOGLE_CREDENTIALS_JSON et GOOGLE_DRIVE_MASTER_FOLDER_ID
+        configurés dans les variables d'environnement.
+    """
+    try:
+        from app.services.drive import DriveManager
+        from app.services.document import DocumentProcessor
+        from pathlib import Path
+        import tempfile
+
+        logger.info("Test Google Drive demandé")
+
+        result = {
+            "status": "success",
+            "connection": {},
+            "folder_creation": {},
+            "file_upload": {},
+            "shareable_link": None
+        }
+
+        # 1. Tester la connexion
+        try:
+            drive_manager = DriveManager()
+            result["connection"] = {
+                "status": "ok",
+                "master_folder_id": drive_manager.master_folder_id
+            }
+            logger.info("✅ Connexion Google Drive réussie")
+        except Exception as e:
+            result["status"] = "error"
+            result["connection"] = {
+                "status": "error",
+                "error": str(e)
+            }
+            logger.error(f"❌ Erreur connexion Drive: {e}")
+            return result
+
+        # 2. Tester la création de dossier
+        try:
+            # Créer un dossier de test
+            test_folder_name = "TEST_Leonie_Drive"
+
+            # Vérifier si existe déjà
+            existing_folder_id = drive_manager.folder_exists(
+                test_folder_name,
+                drive_manager.master_folder_id
+            )
+
+            if existing_folder_id:
+                folder_id = existing_folder_id
+                result["folder_creation"] = {
+                    "status": "existing",
+                    "folder_id": folder_id,
+                    "folder_name": test_folder_name
+                }
+                logger.info(f"✅ Dossier test existant: {folder_id}")
+            else:
+                folder_id = drive_manager.create_folder(
+                    test_folder_name,
+                    drive_manager.master_folder_id
+                )
+                result["folder_creation"] = {
+                    "status": "created",
+                    "folder_id": folder_id,
+                    "folder_name": test_folder_name
+                }
+                logger.info(f"✅ Dossier test créé: {folder_id}")
+
+        except Exception as e:
+            result["folder_creation"] = {
+                "status": "error",
+                "error": str(e)
+            }
+            logger.error(f"❌ Erreur création dossier: {e}")
+
+        # 3. Tester l'upload d'un fichier
+        try:
+            # Créer un PDF de test
+            with tempfile.NamedTemporaryFile(
+                mode='w',
+                suffix='.txt',
+                delete=False
+            ) as temp_file:
+                temp_file.write("Test fichier Léonie pour Google Drive\n")
+                temp_file.write(f"Généré le: {datetime.utcnow().isoformat()}\n")
+                temp_txt_path = Path(temp_file.name)
+
+            # Convertir en PDF
+            processor = DocumentProcessor()
+
+            # Pour le test, créer un simple fichier texte et le considérer comme PDF
+            # (ou utiliser une vraie image si disponible)
+            test_pdf_path = Path(tempfile.gettempdir()) / "test_leonie_drive.pdf"
+
+            # Si on a une image de test, l'utiliser
+            test_image = Path("/tmp/test_image.jpg")
+            if test_image.exists():
+                pdf_path = processor.convert_to_pdf(str(test_image))
+            else:
+                # Créer un PDF simple avec Pillow
+                from PIL import Image
+                img = Image.new('RGB', (400, 200), color=(73, 109, 137))
+                img.save(test_pdf_path, 'PDF')
+                pdf_path = str(test_pdf_path)
+
+            # Upload sur Drive
+            file_id = drive_manager.upload_file(
+                Path(pdf_path),
+                folder_id,
+                filename="test_leonie_upload.pdf"
+            )
+
+            result["file_upload"] = {
+                "status": "uploaded",
+                "file_id": file_id,
+                "filename": "test_leonie_upload.pdf",
+                "folder_id": folder_id
+            }
+            logger.info(f"✅ Fichier uploadé: {file_id}")
+
+            # 4. Générer un lien partageable
+            try:
+                shareable_link = drive_manager.get_shareable_link(file_id)
+                result["shareable_link"] = shareable_link
+                logger.info(f"✅ Lien partageable: {shareable_link}")
+            except Exception as e:
+                logger.warning(f"⚠️ Impossible de générer lien partageable: {e}")
+
+            # Nettoyage fichiers temporaires
+            try:
+                if temp_txt_path.exists():
+                    temp_txt_path.unlink()
+                if test_pdf_path.exists():
+                    test_pdf_path.unlink()
+            except:
+                pass
+
+        except Exception as e:
+            result["file_upload"] = {
+                "status": "error",
+                "error": str(e)
+            }
+            logger.error(f"❌ Erreur upload fichier: {e}", exc_info=True)
+
+        logger.info(f"Test Google Drive terminé: {result['status']}")
+        return result
+
+    except Exception as e:
+        logger.error(
+            f"Erreur lors du test Google Drive: {e}",
+            exc_info=True
+        )
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Erreur lors du test Google Drive. Vérifiez les variables d'environnement."
         }
 
 

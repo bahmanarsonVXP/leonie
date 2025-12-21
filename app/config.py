@@ -56,6 +56,14 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         description="URL de connexion Redis"
     )
+    REDIS_QUEUE_HIGH: str = Field(
+        default="high",
+        description="Nom de la queue haute priorité (nouveaux dossiers)"
+    )
+    REDIS_QUEUE_DEFAULT: str = Field(
+        default="default",
+        description="Nom de la queue priorité normale (documents, modifications)"
+    )
 
     # ==========================================================================
     # EMAIL (IMAP)
@@ -101,13 +109,26 @@ class Settings(BaseSettings):
     # GOOGLE DRIVE
     # ==========================================================================
 
+    # Service Account JSON (stocké comme string JSON)
+    GOOGLE_CREDENTIALS_JSON: str = Field(
+        ...,
+        description="JSON complet du Service Account Google (string)"
+    )
+
+    # ID du dossier maître "DOSSIERS_PRETS"
+    GOOGLE_DRIVE_MASTER_FOLDER_ID: str = Field(
+        ...,
+        description="ID du dossier racine Google Drive (DOSSIERS_PRETS)"
+    )
+
+    # Anciens champs (deprecated, gardés pour compatibilité)
     GOOGLE_CREDENTIALS_FILE: str = Field(
         default="service-account.json",
-        description="Chemin vers le fichier credentials Google Service Account"
+        description="[DEPRECATED] Chemin vers le fichier credentials Google Service Account"
     )
     GDRIVE_ROOT_FOLDER_ID: Optional[str] = Field(
         None,
-        description="ID du dossier racine Google Drive (optionnel)"
+        description="[DEPRECATED] ID du dossier racine Google Drive (optionnel)"
     )
 
     # ==========================================================================

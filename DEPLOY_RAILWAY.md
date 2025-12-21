@@ -70,9 +70,31 @@ IMAP_LABEL=INBOX
 # Mistral AI
 MISTRAL_API_KEY=votre-clé-mistral
 
+# Google Drive (OBLIGATOIRE maintenant)
+GOOGLE_CREDENTIALS_JSON='{"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}'
+GOOGLE_DRIVE_MASTER_FOLDER_ID=1abc_defgh_ijklmnop_qrstuvwxyz
+
+# Sécurité
+API_SECRET_KEY=votre-clé-secrète-générée-aléatoirement
+
+# SMTP (pour notifications)
+SMTP_EMAIL=leonie.capitalinfinie@gmail.com
+SMTP_PASSWORD=votre-mot-de-passe-application
+
 # Environnement
 ENVIRONMENT=production
 # Note: PORT est défini automatiquement par Railway, ne pas l'ajouter manuellement
+```
+
+**⚠️ IMPORTANT pour GOOGLE_CREDENTIALS_JSON :**
+- Copiez le JSON complet du Service Account (voir GOOGLE-DRIVE-SETUP.md)
+- Tout sur une seule ligne
+- Entouré de quotes simples `'...'`
+- Les `\n` dans `private_key` doivent être préservés
+
+**Exemple complet :**
+```bash
+GOOGLE_CREDENTIALS_JSON='{"type":"service_account","project_id":"leonie-drive-123456","private_key_id":"abc123","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBA...\n-----END PRIVATE KEY-----\n","client_email":"leonie-drive@leonie-drive-123456.iam.gserviceaccount.com","client_id":"123456789","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/..."}'
 ```
 
 #### Variables optionnelles
@@ -81,8 +103,10 @@ ENVIRONMENT=production
 # Redis (pour plus tard, quand les workers seront implémentés)
 # REDIS_URL=redis://default:password@redis.railway.app:6379
 
-# Google Drive (si utilisé)
-# GOOGLE_DRIVE_FOLDER_ID=votre-folder-id
+# SMTP (si différent de IMAP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_FROM_NAME=Léonie
 ```
 
 ### 4. Vérifier le déploiement
@@ -93,6 +117,32 @@ ENVIRONMENT=production
    ```bash
    curl https://votre-app.railway.app/health
    ```
+4. Tester Google Drive :
+   ```bash
+   curl -X POST https://votre-app.railway.app/test-drive | jq
+   ```
+
+**Résultat attendu :**
+```json
+{
+  "status": "success",
+  "connection": {
+    "status": "ok",
+    "master_folder_id": "1abc..."
+  },
+  "folder_creation": {
+    "status": "created",
+    "folder_id": "1xyz...",
+    "folder_name": "TEST_Leonie_Drive"
+  },
+  "file_upload": {
+    "status": "uploaded",
+    "file_id": "1def...",
+    "filename": "test_leonie_upload.pdf"
+  },
+  "shareable_link": "https://drive.google.com/file/d/..."
+}
+```
 
 ### 5. Obtenir l'URL publique
 
@@ -137,6 +187,13 @@ Railway peut utiliser des variables d'environnement de plusieurs façons :
 
 - Vérifier `IMAP_EMAIL` et `IMAP_PASSWORD`
 - S'assurer d'utiliser un "App Password" Gmail, pas le mot de passe normal
+
+### Erreur Google Drive
+
+- Vérifier que `GOOGLE_CREDENTIALS_JSON` est bien formaté (une seule ligne, quotes simples)
+- Vérifier que `GOOGLE_DRIVE_MASTER_FOLDER_ID` est correct
+- Vérifier que le dossier "DOSSIERS_PRETS" est partagé avec le Service Account
+- Tester avec `/test-drive` pour voir l'erreur exacte
 
 ### Le worker crash
 
