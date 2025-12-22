@@ -1,0 +1,5 @@
+name = "leonie"
+compatibility_date = "2024-12-22"
+
+# Cloudflare Pages configuration
+pages_build_output_dir = "dist"

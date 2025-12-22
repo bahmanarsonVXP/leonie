@@ -5,7 +5,14 @@
       "Bash(timeout 3 uvicorn:*)",
       "Bash(npm uninstall:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wrangler whoami:*)",
+      "Bash(./deploy-cloudflare.sh)",
+      "Bash(wrangler pages secret put:*)",
+      "Bash(wrangler pages secret list:*)",
+      "Bash(wrangler pages project:*)",
+      "Bash(wrangler pages deployment list:*)"
     ]
   }
 }
