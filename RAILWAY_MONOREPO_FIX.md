@@ -43,18 +43,48 @@ Railway va maintenant :
 3. Copier uniquement les fichiers depuis `backend/`
 4. Lancer l'application avec `/app/start.sh`
 
+## Configuration Watch Paths (IMPORTANT)
+
+Pour éviter les redéploiements inutiles quand le `frontend/` change, configurez les **Watch Paths** dans Railway :
+
+### Dans Railway Dashboard :
+1. Allez dans votre projet → Service `web` → **Settings**
+2. Trouvez la section **"Watch Paths"** ou **"Source"**
+3. Ajoutez les chemins suivants :
+   ```
+   backend/**
+   Dockerfile
+   railway.json
+   ```
+
+### Ou via le format Railway :
+```
+backend/**
+Dockerfile
+railway.json
+```
+
+**Pourquoi ?**
+- ✅ Évite les redéploiements quand `frontend/` change
+- ✅ Redéploie seulement quand `backend/` change
+- ✅ Redéploie aussi si `Dockerfile` ou `railway.json` changent (config build)
+
+**Note** : Si vous utilisez le nouveau builder v2 et que les Watch Paths sont ignorés, vous pouvez revenir à l'ancien builder dans les Settings.
+
 ## Prochaines étapes
 
-1. **Commiter les changements** :
+1. **Configurer Watch Paths dans Railway Dashboard** (voir ci-dessus)
+
+2. **Commiter les changements** (déjà fait) :
    ```bash
    git add Dockerfile railway.json
    git commit -m "fix: Adapter Dockerfile pour structure monorepo Railway"
    git push
    ```
 
-2. **Railway va redéployer automatiquement** (si GitHub est connecté)
+3. **Railway va redéployer automatiquement** (si GitHub est connecté)
 
-3. **Vérifier les logs** :
+4. **Vérifier les logs** :
    ```bash
    railway logs --tail 100
    ```
