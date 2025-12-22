@@ -1,38 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(tree:*)",
-      "Bash(python:*)",
-      "Bash(curl:*)",
-      "Bash(source venv/bin/activate)",
-      "Bash(pip install:*)",
-      "Bash(lsof:*)",
-      "Bash(timeout 15 python:*)",
-      "Bash(uvicorn:*)",
-      "Bash(pip show:*)",
-      "Bash(chmod:*)",
-      "Bash(. venv/bin/activate)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(xargs kill -9)",
-      "Bash(ls:*)",
-      "Bash(railway whoami:*)",
-      "Bash(railway status:*)",
-      "Bash(railway domain:*)",
-      "Bash(railway logs:*)",
-      "Bash(redis-cli ping:*)",
-      "Bash(cat:*)",
-      "Bash(redis-cli:*)",
-      "Bash(while read key)",
-      "Bash(do echo \"=== $key ===\")",
-      "Bash(done)",
-      "Bash(while read job_id)",
-      "Bash(do if [ ! -z \"$job_id\" ])",
-      "Bash(then echo \"=== Job: $job_id ===\" redis-cli HGET \"rq:job:$job_id\" \"description\" redis-cli HGET \"rq:job:$job_id\" \"result\")",
-      "Bash(fi)",
-      "Bash(xargs:*)",
-      "Bash(pkill:*)"
+      "Bash(kill:*)",
+      "Bash(timeout 3 uvicorn:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

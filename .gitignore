@@ -1,76 +1,81 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# ==============================================================================
+# LÉONIE MONOREPO - .gitignore Global
+# ==============================================================================
 
-# Virtual Environment
-venv/
-env/
-ENV/
-.venv
+# ==============================================================================
+# OS Files
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# IDE
+# ==============================================================================
+# IDEs
+# ==============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-*.cover
-
-# Logs
-*.log
-logs/
-
-# Database
-*.db
-*.sqlite3
-
+# ==============================================================================
 # Temporary files
-tmp/
-temp/
+# ==============================================================================
+*.log
 *.tmp
+*.temp
 
-# Google credentials
-credentials.json
-token.json
-service-account.json
-*-credentials.json
-leoniedrive-de502592846e.json
+# ==============================================================================
+# Git
+# ==============================================================================
+.git/
 
-# Railway
-.railway/
+# ==============================================================================
+# Backend (Python)
+# ==============================================================================
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.env
+backend/.env.local
+backend/venv/
+backend/.venv/
+backend/env/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/dist/
+backend/build/
+backend/*.egg-info/
+backend/.admin_token
 
-# Documents temporaires
-*.pdf
-*.docx
-*.xlsx
-!tests/fixtures/*.pdf
-!tests/fixtures/*.docx
+# ==============================================================================
+# Frontend (React)
+# ==============================================================================
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+frontend/.vite/
+frontend/.cache/
+
+# ==============================================================================
+# Secrets & Credentials
+# ==============================================================================
+*.pem
+*.key
+*.cert
+*credentials*.json
+*service-account*.json
+.admin_token

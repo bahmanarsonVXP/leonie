@@ -1,0 +1,352 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Capital In Fine - Couleurs principales */
+    --cif-primary: 30 58 95;
+    --cif-primary-hover: 42 74 115;
+    --cif-primary-light: 232 238 244;
+    --cif-secondary: 52 152 219;
+    --cif-secondary-hover: 41 128 185;
+    --cif-accent: 212 168 75;
+    --cif-accent-hover: 196 154 61;
+    --cif-dark: 21 39 54;
+    --cif-darker: 15 28 38;
+
+    /* Fond et surfaces */
+    --background: 248 250 252;
+    --foreground: 30 41 59;
+    --card: 255 255 255;
+    --card-foreground: 30 41 59;
+    --popover: 255 255 255;
+    --popover-foreground: 30 41 59;
+
+    /* Couleurs primaires (mappées sur CIF) */
+    --primary: 30 58 95;
+    --primary-foreground: 255 255 255;
+    --secondary: 241 245 249;
+    --secondary-foreground: 30 58 95;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
+    --accent: 212 168 75;
+    --accent-foreground: 255 255 255;
+
+    /* États */
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --success: 16 185 129;
+    --success-foreground: 255 255 255;
+    --warning: 245 158 11;
+    --warning-foreground: 255 255 255;
+    --info: 59 130 246;
+    --info-foreground: 255 255 255;
+
+    /* Bordures et inputs */
+    --border: 226 232 240;
+    --input: 226 232 240;
+    --ring: 30 58 95;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-edge-default;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  body {
+    @apply bg-surface-bg text-content-primary font-sans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold text-content-primary;
+  }
+
+  h1 {
+    @apply text-3xl;
+  }
+
+  h2 {
+    @apply text-2xl;
+  }
+
+  h3 {
+    @apply text-xl;
+  }
+
+  h4 {
+    @apply text-lg;
+  }
+
+  a {
+    @apply text-cif-secondary hover:text-cif-secondary-hover transition-colors;
+  }
+}
+
+@layer components {
+  /* Boutons Capital In Fine */
+  .btn-cif-primary {
+    @apply bg-cif-primary text-white px-4 py-2 rounded-cif font-medium
+           hover:bg-cif-primary-hover active:scale-[0.98]
+           transition-all duration-200 ease-out
+           focus:outline-none focus:ring-2 focus:ring-cif-primary focus:ring-offset-2;
+  }
+
+  .btn-cif-secondary {
+    @apply bg-white text-cif-primary px-4 py-2 rounded-cif font-medium
+           border border-edge-default
+           hover:bg-cif-primary-light hover:border-cif-primary
+           active:scale-[0.98]
+           transition-all duration-200 ease-out
+           focus:outline-none focus:ring-2 focus:ring-cif-primary focus:ring-offset-2;
+  }
+
+  .btn-cif-accent {
+    @apply bg-cif-accent text-white px-4 py-2 rounded-cif font-medium
+           hover:bg-cif-accent-hover active:scale-[0.98]
+           transition-all duration-200 ease-out
+           focus:outline-none focus:ring-2 focus:ring-cif-accent focus:ring-offset-2;
+  }
+
+  .btn-cif-ghost {
+    @apply text-content-secondary px-4 py-2 rounded-cif font-medium
+           hover:bg-surface-muted hover:text-content-primary
+           active:scale-[0.98]
+           transition-all duration-200 ease-out;
+  }
+
+  /* Cartes Capital In Fine */
+  .card-cif {
+    @apply bg-surface-card rounded-cif-lg p-6
+           border border-edge-default
+           shadow-cif-card
+           hover:shadow-cif-card-hover
+           transition-shadow duration-200;
+  }
+
+  .card-cif-elevated {
+    @apply bg-surface-elevated rounded-cif-lg p-6
+           shadow-cif-md
+           hover:shadow-cif-lg
+           transition-shadow duration-200;
+  }
+
+  /* Inputs Capital In Fine */
+  .input-cif {
+    @apply w-full px-4 py-2.5 rounded-cif
+           bg-white border border-edge-default
+           text-content-primary placeholder:text-content-muted
+           focus:outline-none focus:ring-2 focus:ring-cif-primary focus:border-transparent
+           transition-all duration-200;
+  }
+
+  .input-cif-error {
+    @apply input-cif border-status-error
+           focus:ring-status-error;
+  }
+
+  /* Badges Capital In Fine */
+  .badge-cif {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-xs font-medium;
+  }
+
+  .badge-cif-primary {
+    @apply badge-cif bg-cif-primary-light text-cif-primary;
+  }
+
+  .badge-cif-success {
+    @apply badge-cif bg-status-success-bg text-status-success
+           border border-status-success-border;
+  }
+
+  .badge-cif-warning {
+    @apply badge-cif bg-status-warning-bg text-status-warning
+           border border-status-warning-border;
+  }
+
+  .badge-cif-error {
+    @apply badge-cif bg-status-error-bg text-status-error
+           border border-status-error-border;
+  }
+
+  .badge-cif-info {
+    @apply badge-cif bg-status-info-bg text-status-info
+           border border-status-info-border;
+  }
+
+  /* Sidebar Capital In Fine */
+  .sidebar-cif {
+    @apply bg-cif-dark text-white min-h-screen w-64
+           flex flex-col;
+  }
+
+  .sidebar-cif-header {
+    @apply px-6 py-5 border-b border-white/10;
+  }
+
+  .sidebar-cif-nav {
+    @apply flex-1 px-3 py-4 space-y-1;
+  }
+
+  .sidebar-cif-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-cif
+           text-white/70 font-medium
+           hover:bg-white/10 hover:text-white
+           transition-all duration-200;
+  }
+
+  .sidebar-cif-item-active {
+    @apply sidebar-cif-item bg-white/15 text-white;
+  }
+
+  .sidebar-cif-footer {
+    @apply px-6 py-4 border-t border-white/10 text-white/50 text-sm;
+  }
+
+  /* Tables Capital In Fine */
+  .table-cif {
+    @apply w-full text-sm;
+  }
+
+  .table-cif thead {
+    @apply bg-surface-muted;
+  }
+
+  .table-cif th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider;
+  }
+
+  .table-cif tbody tr {
+    @apply border-b border-edge-muted hover:bg-surface-muted/50 transition-colors;
+  }
+
+  .table-cif td {
+    @apply px-4 py-3 text-content-primary;
+  }
+
+  /* Alertes Capital In Fine */
+  .alert-cif {
+    @apply p-4 rounded-cif-lg flex items-start gap-3;
+  }
+
+  .alert-cif-success {
+    @apply alert-cif bg-status-success-bg border border-status-success-border text-status-success;
+  }
+
+  .alert-cif-warning {
+    @apply alert-cif bg-status-warning-bg border border-status-warning-border text-status-warning;
+  }
+
+  .alert-cif-error {
+    @apply alert-cif bg-status-error-bg border border-status-error-border text-status-error;
+  }
+
+  .alert-cif-info {
+    @apply alert-cif bg-status-info-bg border border-status-info-border text-status-info;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar personnalisée */
+  .scrollbar-cif {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.cif.primary / 30%') transparent;
+  }
+
+  .scrollbar-cif::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-cif::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-cif::-webkit-scrollbar-thumb {
+    background-color: theme('colors.cif.primary / 30%');
+    border-radius: 3px;
+  }
+
+  .scrollbar-cif::-webkit-scrollbar-thumb:hover {
+    background-color: theme('colors.cif.primary / 50%');
+  }
+
+  /* Ancienne scrollbar (compatibilité) */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.neutral.300') transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: theme('colors.neutral.300');
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: theme('colors.neutral.400');
+  }
+
+  /* Transitions fluides */
+  .transition-cif {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Ombres au hover */
+  .hover-lift {
+    @apply hover:-translate-y-0.5 hover:shadow-cif-lg transition-all duration-200;
+  }
+
+  /* Texte tronqué */
+  .text-truncate {
+    @apply truncate;
+  }
+
+  .text-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .text-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Custom focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-cif-primary ring-offset-2;
+}
+
+/* Disable text selection in electron app */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Drag area for electron window */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}

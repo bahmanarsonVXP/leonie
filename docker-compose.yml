@@ -1,0 +1,120 @@
+version: '3.8'
+
+# ==============================================================================
+# LÉONIE - Docker Compose
+# ==============================================================================
+# Lance backend, frontend et Redis en local avec Docker
+# Usage: docker-compose up
+# Arrêter: docker-compose down
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # REDIS
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: leonie-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - leonie-network
+
+  # ============================================================================
+  # BACKEND (FastAPI)
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: leonie-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    volumes:
+      - ./backend:/app
+      - /app/venv  # Exclure venv du volume
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - leonie-network
+
+  # ============================================================================
+  # BACKEND WORKER (RQ)
+  # ============================================================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: leonie-worker
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    volumes:
+      - ./backend:/app
+      - /app/venv
+    command: rq worker high default --url redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - leonie-network
+
+  # ============================================================================
+  # FRONTEND (React + Vite)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: leonie-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Exclure node_modules du volume
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - leonie-network
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+volumes:
+  redis_data:
+    driver: local
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+networks:
+  leonie-network:
+    driver: bridge
