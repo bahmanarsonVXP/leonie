@@ -2,6 +2,8 @@
 Léonie - Agent IA pour courtiers en prêts immobiliers et professionnels.
 
 Point d'entrée de l'application FastAPI.
+
+Déployé sur Railway avec structure monorepo (backend/ + frontend/).
 """
 
 import logging
