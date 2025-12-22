@@ -11,6 +11,7 @@
 import { createClient, AuthChangeEvent, Session } from '@supabase/supabase-js';
 import type { User } from '../types';
 
+// Variables d'environnement injectées par Vite au moment du build
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
