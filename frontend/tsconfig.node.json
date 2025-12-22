@@ -12,6 +12,12 @@
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
+    
+    /* Emit - required for composite projects */
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist-types",
 
     /* Linting */
     "strict": true,
