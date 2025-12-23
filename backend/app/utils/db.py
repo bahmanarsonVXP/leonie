@@ -36,9 +36,18 @@ class SupabaseClient:
                     "SUPABASE_URL et SUPABASE_KEY doivent être définis "
                     "dans les variables d'environnement"
                 )
+            # Utilise la clé Service Role si disponible (pour les opérations backend/admin)
+            # Sinon, utilise la clé standard (qui doit alors être une clé service ou avoir les droits suffisants)
+            key_to_use = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY
+            
+            # Log (masqué) pour debug
+            if settings.SUPABASE_SERVICE_ROLE_KEY:
+                # On ne logge pas via logger ici pour éviter imports circulaires si logger dépend de config/db
+                pass
+            
             cls._instance = create_client(
                 settings.SUPABASE_URL,
-                settings.SUPABASE_KEY
+                key_to_use
             )
         return cls._instance
 
