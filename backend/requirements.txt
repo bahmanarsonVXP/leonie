@@ -24,7 +24,9 @@ postgrest>=0.13.0
 # Redis & Queue
 redis>=5.0.0
 rq>=1.16.0
+rq>=1.16.0
 rq-scheduler>=0.13.0
+apscheduler>=3.10.4
 
 # AI & ML
 mistralai>=0.1.0

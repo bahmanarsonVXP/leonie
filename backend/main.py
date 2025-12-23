@@ -55,14 +55,59 @@ async def lifespan(app: FastAPI):
     logger.info(f"Démarrage de {settings.APP_NAME} v{settings.APP_VERSION}")
     logger.info(f"Environnement: {settings.ENVIRONMENT}")
 
-    # TODO: Initialiser les connexions (Supabase, Redis, etc.)
-    # TODO: Lancer les workers si nécessaire
+    # Initialisation du Scheduler pour les tâches de fond
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from app.cron.check_emails import check_new_emails
+    from app.utils.db import get_config
+
+    scheduler = AsyncIOScheduler()
+    
+    # Récupérer l'intervalle de polling depuis la config (défaut: 120 secondes)
+    try:
+        polling_interval = get_config("email_polling_interval")
+        
+        interval_seconds = 120 # Défaut
+        
+        if polling_interval:
+            # Si c'est un dict ({"minutes": 2}), on extrait la valeur
+            if isinstance(polling_interval, dict):
+                if "seconds" in polling_interval:
+                    interval_seconds = int(polling_interval["seconds"])
+                elif "minutes" in polling_interval:
+                    interval_seconds = int(polling_interval["minutes"]) * 60
+            else:
+                # Si c'est une valeur directe (str ou int), on suppose des SECONDES
+                # comme indiqué dans la description de la config ("300" = 5 min)
+                interval_seconds = int(polling_interval)
+            
+        # Minimum 60 secondes pour éviter le spam
+        interval_seconds = max(60, interval_seconds)
+        logger.info(f"Intervalle de polling configuré: {interval_seconds} secondes")
+        
+    except Exception as e:
+        logger.warning(f"Erreur lecture config polling, utilisation défaut 120s: {e}")
+        interval_seconds = 120
+
+    # Tâche 1: Vérification des emails
+    scheduler.add_job(
+        check_new_emails, 
+        'interval', 
+        seconds=interval_seconds, 
+        id='check_emails_job',
+        replace_existing=True
+    )
+    logger.info(f"Tâche planifiée: check_emails (toutes les {interval_seconds} secondes)")
+
+    scheduler.start()
+    logger.info("Scheduler démarré")
 
     yield
 
     # Shutdown
     logger.info("Arrêt de l'application...")
-    # TODO: Fermer les connexions proprement
+    if scheduler.running:
+        scheduler.shutdown()
+        logger.info("Scheduler arrêté")
 
 
 # Création de l'application FastAPI
