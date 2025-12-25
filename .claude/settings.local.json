@@ -12,7 +12,14 @@
       "Bash(wrangler pages secret put:*)",
       "Bash(wrangler pages secret list:*)",
       "Bash(wrangler pages project:*)",
-      "Bash(wrangler pages deployment list:*)"
+      "Bash(wrangler pages deployment list:*)",
+      "Bash(railway --version:*)",
+      "Bash(railway up:*)",
+      "Bash(railway variables:*)",
+      "Bash(railway service:*)",
+      "Bash(railway add:*)",
+      "Bash(railway deployment list:*)",
+      "Bash(jq:*)"
     ]
   }
 }

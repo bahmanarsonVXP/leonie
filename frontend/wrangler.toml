@@ -3,3 +3,10 @@ compatibility_date = "2024-12-22"
 
 # Cloudflare Pages configuration
 pages_build_output_dir = "dist"
+
+# Variables d'environnement pour le build Vite
+# Note: Les variables VITE_* sont injectées par Vite au moment du build
+[env.production.vars]
+# Ces variables sont disponibles au runtime, mais pour Vite elles doivent
+# être définies dans Cloudflare Dashboard -> Environment Variables (section Build)
+# Voir: https://developers.cloudflare.com/pages/platform/build-configuration/#environment-variables

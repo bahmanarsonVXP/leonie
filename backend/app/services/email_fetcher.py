@@ -105,10 +105,10 @@ class EmailFetcher:
 
     def fetch_new_emails(self) -> List[EmailData]:
         """
-        Récupère les nouveaux emails depuis la dernière vérification.
+        Récupère les nouveaux emails (UNSEEN) depuis la dernière vérification.
 
         Utilise un timestamp sauvegardé dans Supabase config pour éviter
-        de retraiter les mêmes emails. Recherche avec SINCE au lieu de UNSEEN.
+        de retraiter les mêmes emails, ET filtre sur UNSEEN pour éviter les boucles.
 
         Returns:
             Liste des emails récupérés et parsés.
@@ -152,16 +152,17 @@ class EmailFetcher:
 
             # Formater la date pour IMAP (format: DD-Mon-YYYY, ex: 15-Jan-2024)
             date_str = last_timestamp.strftime("%d-%b-%Y")
-            logger.info(f"Recherche des emails SINCE: {date_str}")
-
-            # Recherche des emails depuis cette date
-            status, message_numbers = self.imap.search(None, f"SINCE {date_str}")
+            
+            # CRITICAL FIX: Utiliser UNSEEN + SINCE pour éviter les boucles infinies
+            logger.info(f"Recherche des emails UNSEEN SINCE: {date_str}")
+            status, message_numbers = self.imap.search(None, f'(UNSEEN SINCE "{date_str}")')
+            
             if status != "OK":
                 logger.error("Erreur lors de la recherche des emails")
                 return []
 
             email_ids = message_numbers[0].split()
-            logger.info(f"Nombre d'emails trouvés depuis {date_str}: {len(email_ids)}")
+            logger.info(f"Nombre d'emails trouvés (UNSEEN) depuis {date_str}: {len(email_ids)}")
 
             # Récupération et parsing des emails
             emails = []
@@ -209,7 +210,10 @@ class EmailFetcher:
             EmailData parsé ou None en cas d'erreur.
         """
         try:
-            # Récupération de l'email brut
+            # Récupération de l'email brut (Body PEAK pour ne pas marquer comme lu tout de suite si voulu)
+            # Mais ici on utilise (RFC822) qui marque généralement comme lu implicitement selon le serveur.
+            # Cependant, Gmail IMAP est particulier. La bonne pratique est de marquer EXPLICITEMENT comme lu après traitement.
+            
             status, msg_data = self.imap.fetch(email_id, "(RFC822)")
             if status != "OK":
                 logger.error(f"Impossible de récupérer l'email {email_id}")
@@ -452,7 +456,7 @@ class EmailFetcher:
                 )
 
             except Exception as e:
-                logger.warning(f"Erreur lors de l'extraction d'une pièce jointe: {e}")
+                logger.warning(f"Erreur lors du extraction d'une pièce jointe: {e}")
                 continue
 
         return attachments
@@ -473,20 +477,21 @@ class EmailFetcher:
 
         try:
             # Recherche de l'email par Message-ID
+            # Note: SEARCH HEADER est parfois lent ou non supporté par tous les serveurs IMAP
             status, message_numbers = self.imap.search(
                 None,
                 f'HEADER Message-ID "{message_id}"'
             )
 
             if status != "OK" or not message_numbers[0]:
-                logger.warning(f"Email avec Message-ID {message_id} non trouvé")
+                logger.warning(f"Email avec Message-ID {message_id} non trouvé pour marquage READ")
                 return False
 
             email_id = message_numbers[0].split()[0]
 
             # Marque comme lu (ajoute le flag \Seen)
             self.imap.store(email_id, "+FLAGS", "\\Seen")
-            logger.info(f"Email {message_id} marqué comme lu")
+            logger.info(f"Email {message_id} marqué comme lu (SEEN)")
             return True
 
         except Exception as e:

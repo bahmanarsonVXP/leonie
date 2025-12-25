@@ -264,3 +264,65 @@ ON CONFLICT (cle) DO NOTHING;
 -- ============================================================================
 -- FIN DU SCHÉMA
 -- ============================================================================
+-- ============================================================================
+-- MIGRATION SESSION 9 : Agent Email First & Context
+-- ============================================================================
+-- À exécuter dans l'éditeur SQL Supabase
+-- ============================================================================
+
+-- 1. Création de la table dossier_context
+-- Cette table stocke la "mémoire" narrative et l'état du dossier pour l'IA
+CREATE TABLE IF NOT EXISTS dossier_context (
+    client_id UUID PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
+    
+    -- Mémoire Narrative (Resumé Mistral)
+    summary TEXT,           -- Ex: "Client réactif, en attente bilan, divorce en cours..."
+    last_update TIMESTAMPTZ DEFAULT now(),
+    
+    -- État "Machine à État"
+    current_status TEXT DEFAULT 'waiting_docs',    -- 'waiting_client', 'waiting_broker', 'ready_to_close', 'waiting_docs'
+    next_action TEXT,       -- Ex: 'relance_j+3', 'verification_document'
+    next_action_due_at TIMESTAMPTZ,
+    
+    -- Metadata Techniques
+    active_thread_id TEXT,  -- ID du thread Gmail en cours pour répondre au bon endroit
+    thread_ids TEXT[] DEFAULT '{}', -- Historique des threads associés
+    
+    -- Métadonnées Fusion (Smart Merging)
+    pending_merges JSONB DEFAULT '{}', -- Ex: {"cni": ["recto_id"], "releves": ["id1", "id2"]}
+    
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+COMMENT ON TABLE dossier_context IS 'Mémoire vivante et état du dossier pour l''agent IA';
+COMMENT ON COLUMN dossier_context.summary IS 'Résumé narratif du contexte dossier généré par l''IA';
+COMMENT ON COLUMN dossier_context.pending_merges IS 'Liste des documents partiels en attente de fusion';
+
+-- 2. Activer RLS pour dossier_context
+ALTER TABLE dossier_context ENABLE ROW LEVEL SECURITY;
+
+-- 3. Policy RLS (Même logique que clients : accès via courtier du client)
+CREATE POLICY courtier_context_policy ON dossier_context
+    FOR ALL
+    USING (
+        client_id IN (
+            SELECT id FROM clients
+            WHERE courtier_id = (current_setting('app.current_courtier_id', true)::uuid)
+        )
+        OR current_setting('app.is_admin', true)::boolean = true
+    );
+
+-- 4. Trigger updated_at
+CREATE TRIGGER update_dossier_context_updated_at BEFORE UPDATE ON dossier_context
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 5. Mise à jour de logs_activite (Commentaire uniquement car TEXT)
+-- Les nouveaux types d'action seront :
+-- - 'agent_shadow': Analyse silencieuse
+-- - 'agent_whisper': Proposition de brouillon
+-- - 'agent_reply': Envoi automatique
+-- - 'doc_merged': Fusion de documents effectuée
+
+-- ============================================================================
+-- FIN MIGRATION SESSION 9
+-- ============================================================================

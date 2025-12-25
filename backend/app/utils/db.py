@@ -201,7 +201,8 @@ def get_client_by_email(email: str, courtier_id: Optional[UUID] = None) -> Optio
         Dict contenant les données du client, ou None si non trouvé.
     """
     db = get_db()
-    query = db.table("clients").select("*").eq("email_principal", email)
+    # Utilisation de ilike avec % pour gérer les éventuels \n ou espaces en fin de chaine
+    query = db.table("clients").select("*").ilike("email_principal", f"{email}%")
 
     if courtier_id:
         query = query.eq("courtier_id", str(courtier_id))
@@ -630,3 +631,47 @@ def set_config(cle: str, valeur: Any, description: Optional[str] = None) -> Dict
 
     response = db.table("config").upsert(config_data).execute()
     return response.data[0]
+
+
+# =============================================================================
+# HELPERS DOSSIER CONTEXT (AGENT MEMORY)
+# =============================================================================
+
+
+def get_dossier_context(client_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Récupère le contexte (mémoire) d'un dossier client.
+    """
+    db = get_db()
+    response = db.table("dossier_context").select("*").eq("client_id", str(client_id)).execute()
+    if response.data and len(response.data) > 0:
+        return response.data[0]
+    return None
+
+def create_dossier_context(client_id: str) -> Dict[str, Any]:
+    """
+    Initialise le contexte pour un nouveau dossier.
+    Si le contexte existe déjà, le retourne sans le modifier.
+    """
+    # Vérifier d'abord si le contexte existe pour éviter l'erreur de contrainte unique
+    existing = get_dossier_context(client_id)
+    if existing:
+        return existing
+
+    db = get_db()
+    data = {
+        "client_id": str(client_id),
+        "summary": "Dossier initié.",
+        "current_status": "waiting_docs"
+    }
+    response = db.table("dossier_context").insert(data).execute()
+    return response.data[0]
+
+def update_dossier_context(client_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Met à jour le contexte d'un dossier.
+    """
+    db = get_db()
+    response = db.table("dossier_context").update(updates).eq("client_id", str(client_id)).execute()
+    return response.data[0] if response.data else None
+

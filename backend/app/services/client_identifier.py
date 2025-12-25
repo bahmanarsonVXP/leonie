@@ -180,7 +180,8 @@ class ClientIdentifier:
         email: EmailData,
         courtier: Dict,
         classification: Dict,
-        drive_manager
+        drive_manager,
+        exclude_sender: bool = False
     ) -> Dict:
         """
         Crée un nouveau client depuis un email + classification Mistral.
@@ -196,6 +197,7 @@ class ClientIdentifier:
             courtier: Courtier (dict Supabase)
             classification: Classification Mistral (dict)
             drive_manager: Instance DriveManager
+            exclude_sender: Si True, force l'exclusion de l'email expéditeur (cas Forward Courtier)
 
         Returns:
             Client créé (dict Supabase)
@@ -221,13 +223,42 @@ class ClientIdentifier:
             "contact@voxperience.com",
             "noreply@voxperience.com"
         ]
+        
+        if exclude_sender and email.from_address:
+            excluded_emails.append(email.from_address.lower())
+            
         candidate_emails = [e for e in all_emails if e not in excluded_emails and e]
 
         # Utiliser premier email trouvé, sinon générer temporaire
         if candidate_emails:
             client_email = candidate_emails[0]
             logger.info(f"Email client identifié: {client_email}")
-        else:
+            
+            # Vérifier si ce client existe déjà pour éviter doublon
+            # (Cas où EmailAgent n'a pas trouvé par Sender, mais l'email extrait est connu)
+            existing_client = get_client_by_email(client_email)
+            if existing_client:
+                logger.info(f"⚡️ Client existant retrouvé via extraction body: {existing_client.get('id')}")
+                return existing_client
+
+        # ÉTAPE SUPLÉMENTAIRE DE SÉCURITÉ : Recherche par NOM/PRÉNOM
+        # Si l'email a changé (typo corrigée par ex), on ne veut pas créer un doublon si le nom est identique.
+        if client_nom:
+             existing_client_by_name = find_client_by_name(courtier.get('id'), client_nom, client_prenom)
+             if existing_client_by_name:
+                 logger.info(f"⚡️ Client existant retrouvé via NOM ({client_nom} {client_prenom}): {existing_client_by_name.get('id')}")
+                 
+                 # Si on a un email candidat, on l'ajoute comme secondaire car c'est une nouvelle adresse pour ce client
+                 if candidate_emails:
+                     new_email = candidate_emails[0]
+                     current_secondary = existing_client_by_name.get('emails_secondaires') or []
+                     if new_email != existing_client_by_name.get('email_principal') and new_email not in current_secondary:
+                         logger.info(f"➕ Ajout de '{new_email}' comme email secondaire pour ce client.")
+                         add_secondary_email(UUID(existing_client_by_name.get('id')), new_email)
+                 
+                 return existing_client_by_name
+
+        if not candidate_emails:
             # Email temporaire (sera mis à jour ultérieurement)
             client_email = f"{client_prenom or 'client'}.{client_nom}@temp.leonie.local".lower()
             logger.warning(

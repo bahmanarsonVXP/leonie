@@ -471,3 +471,36 @@ Normalise les noms de pièces (ex: "CNI" → "Carte nationale d'identité")."""
             Liste de dicts avec structure pièce
         """
         return asyncio.run(self.extract_pieces_from_text(text))
+
+    async def generate_text(self, prompt: str) -> str:
+        """
+        Génère du texte libre via Mistral (pour rédiger emails).
+        """
+        try:
+            response = await self.client.chat.complete_async(
+                model=self.model_chat,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7 # Plus créatif pour la rédaction
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Erreur génération texte Mistral: {e}")
+            return "Désolé, je n'ai pas pu générer le texte."
+
+    async def update_narrative_context(self, current_summary: str, new_event: str) -> str:
+        """
+        Met à jour le résumé narratif du dossier avec un nouvel événement.
+        """
+        prompt = f"""
+        Voici le résumé actuel d'un dossier client :
+        "{current_summary}"
+        
+        Voici un nouvel événement à intégrer :
+        "{new_event}"
+        
+        Mets à jour le résumé pour inclure cette nouvelle information de manière concise.
+        Garde l'historique pertinent mais résume les anciens faits.
+        Le résumé doit faire moins de 10 lignes.
+        """
+        return await self.generate_text(prompt)
+

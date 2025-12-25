@@ -89,8 +89,10 @@ class Settings(BaseSettings):
 
     SMTP_HOST: str = Field(default="smtp.gmail.com", description="Serveur SMTP")
     SMTP_PORT: int = Field(default=587, description="Port SMTP")
-    SMTP_EMAIL: str = Field(..., description="Email d'envoi des notifications")
-    SMTP_PASSWORD: str = Field(..., description="Mot de passe SMTP")
+    SMTP_PORT: int = Field(default=587, description="Port SMTP")
+    SMTP_EMAIL: str = Field(..., description="Email de connexion (Compte Google principal)")
+    SMTP_ALIAS: Optional[str] = Field(None, description="Email d'expédition (Alias, ex: leonie@voxperience.com)")
+    SMTP_PASSWORD: str = Field(..., description="Mot de passe d'application (App Password)")
     SMTP_FROM_NAME: str = Field(default="Léonie", description="Nom de l'expéditeur")
 
     # ==========================================================================
