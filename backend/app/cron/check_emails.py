@@ -44,15 +44,22 @@ async def check_new_emails() -> dict:
 
     # Vérification du mode maintenance (Pause Prod)
     from app.utils.db import get_config
+    from app.config import get_settings
+    
+    settings = get_settings()
     maintenance_mode = get_config("maintenance_mode")
+    
     if maintenance_mode is True:
-        logger.warning("⚠️ MODE MAINTENANCE ACTIF : Traitement des emails en pause.")
-        return {
-            "total_emails": 0,
-            "processed_success": 0,
-            "processed_error": 0,
-            "status": "paused"
-        }
+        if settings.is_production:
+            logger.warning("⚠️ MODE MAINTENANCE ACTIF (PROD) : Traitement des emails en pause sur Railway.")
+            return {
+                "total_emails": 0,
+                "processed_success": 0,
+                "processed_error": 0,
+                "status": "paused"
+            }
+        else:
+             logger.info("ℹ️ MODE MAINTENANCE (PROD) est ACTIF mais ignoré en local (DEV).")
 
     stats = {
         "total_emails": 0,
