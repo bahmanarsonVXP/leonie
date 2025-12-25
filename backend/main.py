@@ -714,6 +714,47 @@ async def test_drive_operations() -> Dict[str, Any]:
         }
 
 
+@app.get("/debug/test-smtp", tags=["Testing"])
+async def test_smtp_connectivity() -> Dict[str, Any]:
+    """
+    Endpoint de test pour la connectivité SMTP (Railway -> Gmail).
+    Envoie un email de test à arsonbahman@gmail.com.
+    """
+    from app.services.smtp import SmtpService
+    import socket
+    
+    logger.info("TEST SMTP demandé via endpoint /debug/test-smtp")
+    
+    # Résolution DNS pour info
+    dns_info = {}
+    try:
+        addr_infos = socket.getaddrinfo("smtp.gmail.com", 587, socket.AF_INET, socket.SOCK_STREAM)
+        dns_info["ipv4_resolved"] = [a[4][0] for a in addr_infos]
+    except Exception as e:
+        dns_info["error"] = str(e)
+
+    try:
+        smtp = SmtpService()
+        success = smtp.send_email(
+            to_email="arsonbahman@gmail.com",
+            subject="[TEST RAILWAY] Test de connectivité SMTP",
+            body="Ceci est un email de test envoyé depuis l'environnement Railway pour vérifier la connectivité IPv4 sortante."
+        )
+        
+        return {
+            "status": "success", 
+            "sent": success,
+            "dns_debug": dns_info,
+            "message": "Email de test envoyé (si true)"
+        }
+    except Exception as e:
+        logger.error(f"Erreur test SMTP: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e),
+            "dns_debug": dns_info
+        }
+
 # =============================================================================
 # GESTIONNAIRES D'ERREURS
 # =============================================================================
