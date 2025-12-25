@@ -151,7 +151,22 @@ class SmtpService:
 
             # Connexion et envoi
             # Utilisation de SMTP simple avec starttls ensuite (port 587)
-            server = smtplib.SMTP(self.smtp_host, self.smtp_port)
+            # FIX: Force IPv4 pour éviter "Network is unreachable" sur Railway (qui tente IPv6)
+            try:
+                # Résolution manuelle IPv4
+                import socket
+                addr_info = socket.getaddrinfo(self.smtp_host, self.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+                smtp_ip = addr_info[0][4][0]
+                logger.info(f"Résolution SMTP IPv4: {self.smtp_host} -> {smtp_ip}")
+                
+                server = smtplib.SMTP()
+                server.connect(smtp_ip, self.smtp_port)
+                # CRITIQUE: Remettre le hostname original pour que la validation SSL (starttls) fonctionne !
+                server._host = self.smtp_host 
+            except Exception as e:
+                logger.warning(f"Échec force IPv4, fallback standard: {e}")
+                server = smtplib.SMTP(self.smtp_host, self.smtp_port)
+
             server.set_debuglevel(0) # Mettre à 1 pour debug
             
             server.ehlo() # Identification initiale
