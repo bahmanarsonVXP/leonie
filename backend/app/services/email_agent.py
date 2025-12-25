@@ -131,6 +131,7 @@ class EmailAgent:
         courtier_id = courtier['id']
 
         # 3. Traitement Documents (Si pièces jointes)
+        processed_docs = []
         if email.attachments:
             processed_docs = self.doc_orchestrator.process_attachments(
                 email.attachments, 
