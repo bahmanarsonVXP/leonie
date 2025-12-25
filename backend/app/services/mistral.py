@@ -504,3 +504,49 @@ Normalise les noms de pièces (ex: "CNI" → "Carte nationale d'identité")."""
         """
         return await self.generate_text(prompt)
 
+    async def analyze_document_nature(self, filename: str, known_types: List[str]) -> str:
+        """
+        Analyse la nature d'un document à partir de son nom de fichier.
+        
+        Args:
+            filename: Nom du fichier.
+            known_types: Liste des types officiels connus.
+            
+        Returns:
+            Nature du document (ex: 'CNI', 'Passeport', 'AUTRE_DOCUMENT').
+        """
+        logger.info(f"Analyse nature document via Mistral: {filename}")
+        
+        known_list_str = ", ".join(known_types)
+        
+        prompt = f"""Analyse le nom de ce fichier : "{filename}"
+        
+        Ton but est d'identifier la nature du document.
+        
+        Liste des types officiels connus : [{known_list_str}]
+        
+        RÈGLES :
+        1. Si ça correspond clairement à un type connu, réponds EXACTEMENT le nom du type connu.
+        2. Si ça ne correspond PAS à un type connu mais que tu peux identifier la nature, réponds un nom court et précis (ex: "Passeport", "Facture Garage", "Devis Travaux").
+        3. Si tu ne peux pas identifier, réponds "AUTRE_DOCUMENT".
+        
+        Réponds UNIQUEMENT le type identifié, sans phrase.
+        """
+        
+        try:
+            response = await self.client.chat.complete_async(
+                model=self.model_chat,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0
+            )
+            result = response.choices[0].message.content.strip().replace('"', '').replace("'", "")
+            
+            # Nettoyage basique
+            if result.upper() == "AUTRE": return "AUTRE_DOCUMENT"
+            
+            return result
+        except Exception as e:
+            logger.error(f"Erreur analyse nature document: {e}")
+            return "AUTRE_DOCUMENT"
+
+

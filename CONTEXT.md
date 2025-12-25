@@ -1,8 +1,8 @@
 # 📋 CONTEXT - Projet Léonie
 
-**Dernière mise à jour** : 22 décembre 2024
-**Session actuelle** : Session 8 complétée (Frontend + Déploiements)
-**Prochaine session** : Session 9 - Agent conversationnel Email First
+**Dernière mise à jour** : 23 décembre 2024
+**Session actuelle** : Session 9 complétée (Backend Agent & Email First)
+**Prochaine session** : Session 10 - Dashboard Frontend (Visualisation)
 
 ---
 
@@ -15,12 +15,17 @@ Automatiser le traitement des emails, la classification des documents et la gest
 - **Agent conversationnel Email First** (prioritaire pour Session 9)
 - Interface web de suivi (développement reporté)
 
-### Architecture globale
+### Architecture - "La Boucle Globale"
 ```
-Courtier → Email (Gmail) → Léonie (IA) → Classification → Google Drive
-                                        ↓
-                              Supabase (BDD) → Frontend (suivi)
+Reçu (Email/Doc) → Analyse (Vision/Intent) → Orchestration Documentaire (Fusion/Renommage)
+                                              ↓
+Envoi (Shadow/Reply) ← Rédaction IA ← Mise à jour Contexte (Mémoire)
 ```
+
+> [!NOTE]
+> **SHADOW MODE (Mode Ombre)** : Par sécurité, l'IA n'envoie JAMAIS d'email directement au client final.
+> Elle rédige un brouillon et l'envoie au **Courtier** (ou Admin) via une redirection transparente.
+> Le courtier valide ensuite en transférant au client.
 
 ---
 
@@ -155,7 +160,9 @@ MISTRAL_TEMPERATURE=0.1
 **Usages :**
 - Classification des emails (nouveau dossier, ajout pièce, modification liste, autre)
 - Extraction d'informations (nom client, type de prêt, etc.)
-- Analyse de documents avec vision (pixtral)
+- **[NOUVEAU]** Analyse de documents avec vision (Pixtral)
+- **[NOUVEAU]** Rédaction de réponses empathiques (Generation)
+- **[NOUVEAU]** Maintenance du "Contexte Vivant" (Résumé narratif)
 
 ### 4. Google Drive
 
@@ -245,6 +252,10 @@ REDIS_URL=redis://localhost:6379/0  # Local uniquement
 - ✅ Google Drive upload/création dossiers
 - ✅ Traitement documents (PDF, images, Office)
 - ✅ Endpoints de test disponibles
+- **[Session 9]** ✅ Agent Orchestrator (`EmailAgent`)
+- **[Session 9]** ✅ "Shadow Mode" (Sécurité Envoi)
+- **[Session 9]** ✅ Fusion Intelligente (CNI Recto+Verso, Relevés)
+- **[Session 9]** ✅ Mémoire Contextuelle (`dossier_context`)
 
 ### Frontend (Cloudflare)
 - ✅ Build Vite avec variables d'environnement
@@ -264,37 +275,26 @@ REDIS_URL=redis://localhost:6379/0  # Local uniquement
 
 ## 🚧 Ce qui reste à faire
 
-### Session 9 : Agent conversationnel Email First (PRIORITÉ)
+### Session 9 : Agent conversationnel (TERMINÉ)
 
-**Objectif** : Construire un agent IA qui répond aux emails des courtiers
+**Objectif** : Construire un agent IA unifié qui gère Documents & Conversation.
 
-**Fonctionnalités à implémenter :**
-1. **Lecture emails** :
-   - Polling IMAP automatique (déjà partiellement fait)
-   - Classification Mistral AI (déjà fait)
+**Fonctionnalités implémentées :**
+1.  **Orchestrateur Unifié** (`EmailAgent`) : Coordonne la vision, la mémoire et la parole.
+2.  **Gestion Documentaire** (`DocumentOrchestrator`) :
+    *   Renommage intelligent (Standardisé).
+    *   **Fusion Intelligente** (Smart Merging) : Regroupe CNI R/V ou Relevés multiples.
+3.  **Mémoire Active** (`ContextManager`) :
+    *   Table `dossier_context` : Résumé narratif mis à jour par Mistral.
+4.  **Parole Contrôlée** (`ResponseGenerator` + `SmtpService`) :
+    *   Rédaction HTML via Mistral.
+    *   **Shadow Mode** : Redirection de sécurité vers le courtier.
 
-2. **Génération réponses** :
-   - Réponses contextuelles selon type d'email
-   - Confirmation création dossier
-   - Demande informations manquantes
-   - Notification pièces reçues
-
-3. **Envoi réponses** :
-   - SMTP vers courtier
-   - Thread/Reply-To pour conserver contexte
-   - Format email professionnel
-
-4. **Actions automatiques** :
-   - Création dossier Drive
-   - Upload documents
-   - Mise à jour Supabase
-   - Notifications
-
-**Fichiers à modifier/créer :**
-- `backend/app/cron/check_emails.py` - Améliorer traitement emails
-- `backend/app/services/email_agent.py` - Nouveau: Agent conversationnel
-- `backend/app/services/smtp.py` - Nouveau: Envoi emails
-- `backend/app/services/response_generator.py` - Nouveau: Génération réponses IA
+**Fichiers clés :**
+- `backend/app/services/email_agent.py`
+- `backend/app/services/document_orchestrator.py`
+- `backend/app/services/context_manager.py`
+- `backend/app/services/smtp.py`
 
 ### Sessions futures (reportées)
 

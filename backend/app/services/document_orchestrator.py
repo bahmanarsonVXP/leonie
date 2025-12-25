@@ -36,12 +36,40 @@ class DocumentOrchestrator:
     def __init__(self):
         self.doc_processor = DocumentProcessor()
         self.drive_manager = DriveManager()
-        
-    def process_attachments(
+        self.known_types = self._load_known_types() # { "NOM_CLEAN": "UUID" }
+        self.legacy_mapping = {
+             "CNI": "Pièce d'identité",
+             "BULLETIN_SALAIRE": "Bulletins de salaire",
+             "AVIS_IMPOT": "Avis d'imposition",
+             "RELEVE_BANCAIRE": "Dernier relevé de compte",
+             "KBIS": "Kbis",
+             "LIVRET_FAMILLE": "Livret de famille"
+        }
+
+    def _load_known_types(self) -> Dict[str, str]:
+        """Charge les types de pièces depuis la base de données."""
+        try:
+             db = get_db()
+             # On récupère nom_piece et id
+             resp = db.table("types_pieces").select("nom_piece, id").execute()
+             mapping = {}
+             if resp.data:
+                 for item in resp.data:
+                     # On normalise la clé pour faciliter le matching (uppercase, sans espace)
+                     key = item['nom_piece'].upper().replace(" ", "_").replace("'", "")
+                     mapping[key] = item['id']
+             logger.info(f"Types de documents chargés depuis DB: {len(mapping)} types.")
+             return mapping
+        except Exception as e:
+            logger.error(f"Erreur chargement types documents: {e}")
+            return {}
+
+    async def process_attachments(
         self, 
         attachments: List[EmailAttachment], 
         client: Dict,
-        courtier_id: str
+        courtier_id: str,
+        mistral_service
     ) -> List[Dict]:
         """
         Traite et consolide les pièces jointes par type.
@@ -63,14 +91,19 @@ class DocumentOrchestrator:
         # 1. Regroupement par Type Maître
         grouped = {}
         
+        # Liste des noms de clés connus pour aider Mistral
+        known_keys = list(self.known_types.keys())
+        
         for att in attachments:
             # Sauvegarde temporaire
             temp_path = Path(self.doc_processor.temp_dir) / att.filename
             with open(temp_path, "wb") as f:
                 if att.content: f.write(att.content)
             
-            # Analyse type
-            raw_type = self._simulate_vision_analysis(att.filename)
+            # Analyse type via Mistral
+            raw_type = await mistral_service.analyze_document_nature(att.filename, known_keys)
+            logger.info(f"Mistral a identifié '{att.filename}' comme : {raw_type}")
+            
             master_type = self._get_master_type(raw_type)
             
             if master_type not in grouped:
@@ -137,22 +170,27 @@ class DocumentOrchestrator:
         try:
             db = get_db()
             
-            # 1. Trouver le type_piece_id correspondant
+            # 1. Tenter de matcher avec un type officiel de la DB
             type_id = self._resolve_type_id_from_master(master_type)
             
-            # 2. Vérifier si une pièce de ce type ou avec ce nom existe déjà pour ce client
+            # 2. Vérifier existant
             existing_pieces = get_pieces_by_client(client_id)
             target_piece = None
             
             for p in existing_pieces:
-                # On match soit par le type de pièce (si défini), soit par le nom du fichier id Drive
                 if p.get('fichier_drive_id') == file_id:
                     target_piece = p
                     break
-                # Si pas de drive ID (ancien), on regarde le type
+                # Si type officiel matché
                 if type_id and p.get('type_piece_id') == type_id:
                     target_piece = p
                     break
+                # Si pas de type ID mais metadata nature match (pour les docs non officiels)
+                if not type_id and p.get('type_piece_id') is None:
+                     meta = p.get('metadata', {}) or {}
+                     if meta.get('nature_detectee') == master_type:
+                         target_piece = p
+                         break
 
             data = {
                 "client_id": str(client_id),
@@ -160,15 +198,33 @@ class DocumentOrchestrator:
                 "fichier_drive_id": file_id,
                 "date_reception": datetime.now().isoformat()
             }
-            # Note: schema 'nom_fichier' n'existe pas dans pieces_dossier, c'est 'metadata' ou implicite. 
-            # Le schema a 'fichier_drive_id', 'fichier_hash'. 
-            # On va mettre le nom dans metadata
-            data["metadata"] = {"nom_fichier": final_name, "source": "email_agent"}
-
+            
+            # Métadonnées
+            metadata = {
+                "nom_fichier": final_name, 
+                "source": "email_agent"
+            }
+            
+            # Gestion CAS 1, 2, 3
             if type_id:
+                # CAS 1 : C'est un type officiel reconnu
                 data["type_piece_id"] = type_id
+            else:
+                # CAS 2 : Type non officiel identifié (ex: Passeport, Facture Garage)
+                # On ne met PAS de type_piece_id (ou NULL), et on stocke la nature
+                # Si c'est vraiment "AUTRE_DOCUMENT" ou inconnu, on peut laisser tel quel
+                if master_type not in ["AUTRE_DOCUMENT", "INCONNU"]:
+                    metadata["nature_detectee"] = master_type
+                else:
+                     # CAS 3 : Fallback Autre
+                     pass
+
+            data["metadata"] = metadata
 
             if target_piece:
+                # Merge metadata existantes si besoin
+                current_meta = target_piece.get('metadata') or {}
+                # On update
                 logger.info(f"Mise à jour pièce DB {target_piece['id']} ({master_type})")
                 return update_piece_dossier(target_piece['id'], data)
             else:
@@ -180,31 +236,19 @@ class DocumentOrchestrator:
             return None
 
     def _resolve_type_id_from_master(self, master_type: str) -> Optional[str]:
-        """Tente de trouver l'UUID du type de pièce à partir du master_type."""
-        # Map master_type -> nom_piece dans la DB
-        # Voir schema.sql pour les valeurs exactes
-        mapping = {
-            "CNI": "Pièce d'identité",
-            "BULLETIN_SALAIRE": "Bulletins de salaire",
-            "AVIS_IMPOT": "Avis d'imposition",
-            "RELEVE_BANCAIRE": "Dernier relevé de compte",
-            "KBIS": "Kbis",
-            "LIVRET_FAMILLE": "Livret de famille" # Pas dans les inserts par défaut mais possible
-        }
-        
-        target_name = mapping.get(master_type)
-        if not target_name:
-            return None
+        """Résout le type via le cache DB dynamique."""
+        # 1. Essai direct (si master_type correspond déjà à une clé DB normalisée)
+        key = master_type.upper().replace(" ", "_").replace("'", "")
+        if key in self.known_types:
+            return self.known_types[key]
             
-        try:
-            db = get_db()
-            # On cherche un type qui a ce nom (peu importe la categorie/pret pour l'instant, on prend le premier)
-            # Idéalement faudrait filtrer par type_pret du client, mais ici on simplifie
-            resp = db.table("types_pieces").select("id").eq("nom_piece", target_name).limit(1).execute()
-            if resp.data:
-                return resp.data[0]['id']
-        except Exception:
-            pass
+        # 2. Essai via mapping Legacy (pour compatibilité ancien prompt)
+        legacy_name = self.legacy_mapping.get(master_type)
+        if legacy_name:
+             legacy_key = legacy_name.upper().replace(" ", "_").replace("'", "")
+             if legacy_key in self.known_types:
+                 return self.known_types[legacy_key]
+        
         return None
 
     def _simulate_vision_analysis(self, filename: str) -> str:
@@ -260,7 +304,9 @@ class DocumentOrchestrator:
         nom = client.get('nom', 'Client')
         client_str = f"{nom}_{prenom}".upper().replace(" ", "_")
         
-        type_map = {
+        # Mapping cosmétique pour les noms de fichiers
+        # Si connu dans legacy, on prend le "beau nom", sinon on utilise le type brut nettoyé
+        pretty_names = {
             "CNI": "CNI",
             "BULLETIN_SALAIRE": "Bulletin_Salaire",
             "AVIS_IMPOT": "Avis_Impot",
@@ -270,5 +316,9 @@ class DocumentOrchestrator:
             "AUTRE_DOCUMENT": "Documents_Divers"
         }
         
-        nice_type = type_map.get(master_type, master_type)
+        nice_type = pretty_names.get(master_type)
+        if not nice_type:
+            # Cas dynamique : "Passeport" -> "Passeport", "Facture Garage" -> "Facture_Garage"
+            nice_type = master_type.title().replace(" ", "_").replace("'", "").replace('"', "")
+            
         return f"{nice_type}_{client_str}.pdf"

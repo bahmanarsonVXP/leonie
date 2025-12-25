@@ -133,10 +133,11 @@ class EmailAgent:
         # 3. Traitement Documents (Si pièces jointes)
         processed_docs = []
         if email.attachments:
-            processed_docs = self.doc_orchestrator.process_attachments(
+            processed_docs = await self.doc_orchestrator.process_attachments(
                 email.attachments, 
                 client,  # Pass full client object
-                courtier_id
+                courtier_id,
+                mistral_service=self.mistral
             )
         
         # 4. Mise à jour Mémoire (Context)
