@@ -1,19 +1,16 @@
 """
-Service d'envoi d'emails via SMTP.
+Service d'envoi d'emails via Resend (Remplacement SMTP).
 
-Ce module gère l'envoi d'emails transactionnels et conversationnels
-avec support pour les pièces jointes, le HTML et le mode 'Shadow' (Brouillon).
+Ce module gère l'envoi d'emails transactionnels via l'API Resend
+pour contourner les blocages SMTP de Railway.
 """
 
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+import os
 from pathlib import Path
 from typing import List, Optional, Union
 
+import resend
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -21,23 +18,22 @@ logger = logging.getLogger(__name__)
 
 class SmtpService:
     """
-    Service d'envoi d'emails SMTP.
+    Service d'envoi d'emails (via Resend).
     
-    Gère:
-    - Connexion SMTP sécurisée (TLS)
-    - Envoi HTML/Texte
-    - Pièces jointes
-    - Mode Shadow (envoi caché au courtier)
+    Le nom 'SmtpService' est conservé pour la compatibilité avec le reste du code,
+    mais l'implémentation utilise l'API HTTP de Resend.
     """
 
     def __init__(self):
         self.settings = get_settings()
-        self.smtp_host = self.settings.SMTP_HOST
-        self.smtp_port = self.settings.SMTP_PORT
-        self.smtp_user = self.settings.SMTP_EMAIL
-        self.smtp_alias = self.settings.SMTP_ALIAS or self.settings.SMTP_EMAIL
-        self.smtp_password = self.settings.SMTP_PASSWORD
-        self.from_name = self.settings.SMTP_FROM_NAME
+        self.api_key = self.settings.RESEND_API_KEY
+        
+        if self.api_key:
+            resend.api_key = self.api_key
+        else:
+            logger.warning("⚠️ RESEND_API_KEY non définie. Les emails ne partiront pas.")
+
+        self.from_email = self.settings.RESEND_FROM_EMAIL
 
     def send_email(
         self,
@@ -55,41 +51,42 @@ class SmtpService:
         shadow_recipient: Optional[str] = None
     ) -> bool:
         """
-        Envoie un email via SMTP.
+        Envoie un email via l'API Resend.
 
         Args:
             to_email: Destinataire principal.
             subject: Sujet de l'email.
             html_content: Corps HTML.
-            text_content: Corps texte (fallback). Si None, généré depuis HTML.
+            text_content: Corps texte (optionnel).
             attachments: Liste de chemins vers les fichiers à joindre.
             cc_emails: Liste des emails en copie.
             bcc_emails: Liste des emails en copie cachée.
-            reply_to: Adresse Reply-To (pour threading).
-            message_id_header: Header Message-ID (optionnel).
-            in_reply_to_header: Header In-Reply-To (pour threading).
+            reply_to: Adresse Reply-To.
+            message_id_header: (Non supporté par Resend nativement, ignoré).
+            in_reply_to_header: (Non supporté par Resend nativement, ignoré).
             is_shadow_mode: Si True, force l'envoi au courtier/admin UNIQUEMENT.
-            shadow_recipient: L'email réel qui recevra le message en mode Shadow (Courtier).
+            shadow_recipient: L'email réel qui recevra le message en mode Shadow.
 
         Returns:
             bool: True si envoi réussi.
         """
+        if not self.api_key:
+            logger.error("❌ Echec envoi: API Key Resend manquante")
+            return False
+
         try:
             # Gestion du mode Shadow (Redirection de sécurité)
             original_to = to_email
+            
+            # Logique Shadow Mode conservée
             if is_shadow_mode:
-                # En mode Shadow, on n'envoie JAMAIS au client
-                # On redirige vers le destinataire spécifié (Courtier) ou l'Admin par défaut
                 redirect_to = shadow_recipient or self.settings.ADMIN_EMAIL
-                
-                # BUGFIX: Ne jamais utiliser reply_to comme redirection car c'est souvent le client !
-                
-                logger.info(f"🔒 MODE SHADOW: Redirection de {original_to} vers {redirect_to}")
+                logger.info(f"🔒 MODE SHADOW (Resend): Redirection de {original_to} vers {redirect_to}")
                 to_email = redirect_to
                 subject = f"[SHADOW] {subject}"
                 html_content = f"""
                 <div style="background-color: #fff3cd; color: #856404; padding: 10px; margin-bottom: 20px; border: 1px solid #ffeeba;">
-                    <strong>MODE SHADOW / BROUILLON</strong><br>
+                    <strong>MODE SHADOW / BROUILLON (Resend)</strong><br>
                     Ceci est une proposition de réponse pour : {original_to}<br>
                     Sujet original : {subject.replace('[SHADOW] ', '')}
                 </div>
@@ -97,38 +94,30 @@ class SmtpService:
                 {html_content}
                 """
 
-            # Création du message
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"{self.from_name} <{self.smtp_alias}>"
-            msg["To"] = to_email
+            # Préparation des paramètres Resend
+            params = {
+                "from": self.from_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content,
+            }
+
+            if text_content:
+                params["text"] = text_content
             
             if cc_emails:
-                msg["Cc"] = ", ".join(cc_emails)
+                params["cc"] = cc_emails
+            
+            if bcc_emails:
+                params["bcc"] = bcc_emails
             
             if reply_to:
-                msg["Reply-To"] = reply_to
+                params["reply_to"] = reply_to
 
-            # Headers spécifiques pour le threading (Gmail)
-            if message_id_header:
-                msg["Message-ID"] = message_id_header
-            if in_reply_to_header:
-                msg["In-Reply-To"] = in_reply_to_header
-                msg["References"] = in_reply_to_header
-
-            # Corps du message
-            # Version texte par défaut si non fournie
-            if not text_content:
-                text_content = "Veuillez activer l'affichage HTML pour voir ce message."
-            
-            part_text = MIMEText(text_content, "plain")
-            part_html = MIMEText(html_content, "html")
-
-            msg.attach(part_text)
-            msg.attach(part_html)
-
-            # Pièces jointes
+            # Gestion des pièces jointes pour Resend
+            # Resend attend une liste de dicts: {"filename": "x", "content": list[int]}
             if attachments:
+                resend_attachments = []
                 for file_path in attachments:
                     path = Path(file_path)
                     if not path.exists():
@@ -136,102 +125,34 @@ class SmtpService:
                         continue
                     
                     try:
-                        with open(path, "rb") as attachment:
-                            part = MIMEBase("application", "octet-stream")
-                            part.set_payload(attachment.read())
-                        
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            "Content-Disposition",
-                            f"attachment; filename= {path.name}",
-                        )
-                        msg.attach(part)
+                        with open(path, "rb") as f:
+                            # Resend Python SDK requiert le contenu en liste d'entiers (bytes list)
+                            content_bytes = list(f.read())
+                            resend_attachments.append({
+                                "filename": path.name,
+                                "content": content_bytes
+                            })
                     except Exception as e:
-                        logger.error(f"Erreur attachement fichier {path}: {e}")
-
-            # Connexion et envoi
-            # Utilisation de SMTP simple avec starttls ensuite (port 587)
-            server = None
-            connection_error = None
-            
-            # FIX: Tentative de connexion sur toutes les IPs IPv4 résolues
-            # pour contourner les blocages/timeouts éventuels sur certaines IPs (et le pb IPv6 Railway)
-            try:
-                import socket
-                # Récupère toutes les adresses (IPv4, TCP)
-                addr_infos = socket.getaddrinfo(self.smtp_host, self.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+                        logger.error(f"Erreur lecture pièce jointe {path}: {e}")
                 
-                for family, type, proto, canonname, sockaddr in addr_infos:
-                    ip_addr = sockaddr[0]
-                    try:
-                        logger.info(f"Tentative connexion SMTP sur {ip_addr} (timeout=10s)...")
-                        # Création socket manuel avec timeout court
-                        sock = socket.create_connection(sockaddr, timeout=10)
-                        
-                        server = smtplib.SMTP()
-                        server.sock = sock
-                        server.connect(host=ip_addr, port=self.smtp_port) # Déjà connecté mais nécessaire pour init les buffers internes
-                        
-                        # IMPORTANT: Restaurer le hostname pour la validation SSL
-                        server._host = self.smtp_host
-                        logger.info(f"✅ Connecté avec succès à {ip_addr}")
-                        break
-                    except Exception as e:
-                        logger.warning(f"Échec connexion sur {ip_addr}: {e}")
-                        if server:
-                            try:
-                                server.close()
-                            except:
-                                pass
-                        server = None
-                        connection_error = e
-                
-                if not server:
-                    raise connection_error or Exception("Aucune IP IPv4 accessible")
+                if resend_attachments:
+                    params["attachments"] = resend_attachments
 
-            except Exception as e:
-                logger.warning(f"Échec stratégie IPv4 forcée ({e}), fallback standard...")
-                # Fallback standard system (peut retomber sur IPv6 et timeout)
-                server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=15)
-
-            server.set_debuglevel(0) # Mettre à 1 pour debug
+            # Envoi effectif
+            logger.info(f"Envoi email via Resend à {to_email}...")
+            response = resend.Emails.send(params)
             
-            try:
-                server.ehlo() # Identification initiale
-                server.starttls() # Sécurisation TLS
-                server.ehlo() # Ré-identification chiffrée
-                server.login(self.smtp_user, self.smtp_password)
-            except Exception as e:
-                # Si erreur pendant le handshake (souvent timeout ou réseau), on s'assure de fermer
-                try:
-                    server.quit()
-                except:
-                    pass
-                raise e
-            
-            # Liste complète des destinataires
-            recipients = [to_email]
-            if cc_emails:
-                recipients.extend(cc_emails)
-            if bcc_emails:
-                recipients.extend(bcc_emails)
-
-            server.sendmail(self.smtp_user, recipients, msg.as_string())
-            server.quit()
-
-            logger.info(
-                f"Email envoyé avec succès à {to_email}",
-                extra={
-                    "subject": subject,
-                    "shadow_mode": is_shadow_mode,
-                    "attachments": len(attachments) if attachments else 0
-                }
-            )
-            return True
+            # Vérification basique du retour (Resend retourne un dict avec 'id' sur succès)
+            if response and "id" in response:
+                logger.info(f"✅ Email envoyé via Resend! ID: {response['id']}")
+                return True
+            else:
+                logger.error(f"❌ Réponse inattendue de Resend: {response}")
+                return False
 
         except Exception as e:
             logger.error(
-                f"Erreur envoi SMTP: {e}",
+                f"Erreur CRITIQUE envoi Resend: {e}",
                 extra={"to": to_email, "subject": subject},
                 exc_info=True
             )

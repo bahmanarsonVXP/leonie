@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = Field(default="Léonie", description="Nom de l'expéditeur")
 
     # ==========================================================================
+    # RESEND (Email API)
+    # ==========================================================================
+
+    RESEND_API_KEY: Optional[str] = Field(None, description="Clé API Resend (si utilisée)")
+    RESEND_FROM_EMAIL: str = Field(default="onboarding@resend.dev", description="Email expéditeur Resend")
+
+    # ==========================================================================
     # MISTRAL AI
     # ==========================================================================
 
