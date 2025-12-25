@@ -738,7 +738,7 @@ async def test_smtp_connectivity() -> Dict[str, Any]:
         success = smtp.send_email(
             to_email="arsonbahman@gmail.com",
             subject="[TEST RAILWAY] Test de connectivité SMTP",
-            body="Ceci est un email de test envoyé depuis l'environnement Railway pour vérifier la connectivité IPv4 sortante."
+            html_content="Ceci est un email de test envoyé depuis l'environnement Railway pour vérifier la connectivité IPv4 sortante."
         )
         
         return {
