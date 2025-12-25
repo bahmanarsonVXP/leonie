@@ -418,8 +418,9 @@ class EmailFetcher:
         for part in email_message.walk():
             content_disposition = str(part.get("Content-Disposition", ""))
 
-            # Vérifie si c'est une pièce jointe
-            if "attachment" not in content_disposition:
+            # Vérifie si c'est une pièce jointe (attachment) ou un contenu en ligne (inline)
+            # On acceptera 'inline' seulement s'il a un filename (vérifié plus bas)
+            if "attachment" not in content_disposition and "inline" not in content_disposition:
                 continue
 
             try:
