@@ -151,29 +151,63 @@ class SmtpService:
 
             # Connexion et envoi
             # Utilisation de SMTP simple avec starttls ensuite (port 587)
-            # FIX: Force IPv4 pour éviter "Network is unreachable" sur Railway (qui tente IPv6)
+            server = None
+            connection_error = None
+            
+            # FIX: Tentative de connexion sur toutes les IPs IPv4 résolues
+            # pour contourner les blocages/timeouts éventuels sur certaines IPs (et le pb IPv6 Railway)
             try:
-                # Résolution manuelle IPv4
                 import socket
-                addr_info = socket.getaddrinfo(self.smtp_host, self.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
-                smtp_ip = addr_info[0][4][0]
-                logger.info(f"Résolution SMTP IPv4: {self.smtp_host} -> {smtp_ip}")
+                # Récupère toutes les adresses (IPv4, TCP)
+                addr_infos = socket.getaddrinfo(self.smtp_host, self.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
                 
-                server = smtplib.SMTP()
-                server.connect(smtp_ip, self.smtp_port)
-                # CRITIQUE: Remettre le hostname original pour que la validation SSL (starttls) fonctionne !
-                server._host = self.smtp_host 
+                for family, type, proto, canonname, sockaddr in addr_infos:
+                    ip_addr = sockaddr[0]
+                    try:
+                        logger.info(f"Tentative connexion SMTP sur {ip_addr} (timeout=10s)...")
+                        # Création socket manuel avec timeout court
+                        sock = socket.create_connection(sockaddr, timeout=10)
+                        
+                        server = smtplib.SMTP()
+                        server.sock = sock
+                        server.connect(host=ip_addr, port=self.smtp_port) # Déjà connecté mais nécessaire pour init les buffers internes
+                        
+                        # IMPORTANT: Restaurer le hostname pour la validation SSL
+                        server._host = self.smtp_host
+                        logger.info(f"✅ Connecté avec succès à {ip_addr}")
+                        break
+                    except Exception as e:
+                        logger.warning(f"Échec connexion sur {ip_addr}: {e}")
+                        if server:
+                            try:
+                                server.close()
+                            except:
+                                pass
+                        server = None
+                        connection_error = e
+                
+                if not server:
+                    raise connection_error or Exception("Aucune IP IPv4 accessible")
+
             except Exception as e:
-                logger.warning(f"Échec force IPv4, fallback standard: {e}")
-                server = smtplib.SMTP(self.smtp_host, self.smtp_port)
+                logger.warning(f"Échec stratégie IPv4 forcée ({e}), fallback standard...")
+                # Fallback standard system (peut retomber sur IPv6 et timeout)
+                server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=15)
 
             server.set_debuglevel(0) # Mettre à 1 pour debug
             
-            server.ehlo() # Identification initiale
-            server.starttls() # Sécurisation TLS
-            server.ehlo() # Ré-identification chiffrée
-            
-            server.login(self.smtp_user, self.smtp_password)
+            try:
+                server.ehlo() # Identification initiale
+                server.starttls() # Sécurisation TLS
+                server.ehlo() # Ré-identification chiffrée
+                server.login(self.smtp_user, self.smtp_password)
+            except Exception as e:
+                # Si erreur pendant le handshake (souvent timeout ou réseau), on s'assure de fermer
+                try:
+                    server.quit()
+                except:
+                    pass
+                raise e
             
             # Liste complète des destinataires
             recipients = [to_email]
